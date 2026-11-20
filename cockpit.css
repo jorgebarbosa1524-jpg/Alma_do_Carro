@@ -285,3 +285,9 @@
   .cg::before, .cg-svg, .ck-alerts, .ck-dot { animation: none !important; }
   .stage-img, .ck-bar i { transition: none !important; }
 }
+
+/* modo espera: atalhos no painel */
+.ck-asst > .btn { margin-top: 2px; }
+@media (max-width: 1180px) and (min-aspect-ratio: 1/1) { .ck-asst > .btn { display: none; } }
+@media (min-width: 1181px) { .ck-standby-h { display: none; } }
+@media (max-aspect-ratio: 1/1) { .ck-standby-h { display: none; } .ck-asst > .btn { grid-column: 1 / -1; justify-self: start; } }

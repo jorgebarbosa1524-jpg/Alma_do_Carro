@@ -79,6 +79,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
     autoComment: true,
     announceAlerts: true,
   },
+  standby: { autoMinutes: 3 },
   ai: {
     backendUrl: '',
     shareVehicleProfile: true,

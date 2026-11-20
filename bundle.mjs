@@ -59,10 +59,10 @@ const iconUri = dataUri('bolt-icon.svg', 'image/svg+xml');
 js = js.replaceAll("'bolt-icon.svg'", JSON.stringify(iconUri));
 js = js.replace(/<\/script/gi, '<\\/script');
 
-let css = read('styles.css') + '\n' + read('cockpit.css');
+let css = read('styles.css') + '\n' + read('cockpit.css') + '\n' + read('standby.css');
 let html = read('index.html');
 html = html
-  .replace(/<link rel="stylesheet" href="styles.css">\s*<link rel="stylesheet" href="cockpit.css">/, () => `<style>\n${css}\n</style>`)
+  .replace(/<link rel="stylesheet" href="styles.css">\s*<link rel="stylesheet" href="cockpit.css">\s*<link rel="stylesheet" href="standby.css">/, () => `<style>\n${css}\n</style>`)
   .replace('<link rel="icon" href="favicon.svg" type="image/svg+xml">', `<link rel="icon" href="${dataUri('favicon.svg', 'image/svg+xml')}" type="image/svg+xml">`)
   .replace(/<link rel="apple-touch-icon"[^>]*>\s*/, '')
   .replace(/<link rel="manifest"[^>]*>\s*/, '')

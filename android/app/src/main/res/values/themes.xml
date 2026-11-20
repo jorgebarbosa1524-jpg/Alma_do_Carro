@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Alma" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/alma_bg</item>
+        <item name="android:statusBarColor">@color/alma_bg</item>
+        <item name="android:navigationBarColor">@color/alma_bg</item>
+        <item name="colorPrimary">@color/alma_cyan</item>
+        <item name="colorAccent">@color/alma_cyan</item>
+    </style>
+</resources>

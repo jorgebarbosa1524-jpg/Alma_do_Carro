@@ -32,6 +32,15 @@ export function extractAfterWake(transcript, wakeName) {
   return t.slice(at + 1 + len).replace(/^(,| )+/, '').trim();
 }
 
+/** "Bolt, tá na escuta?", "Bolt, tá aí?": só chamam a atenção, não são uma pergunta. */
+const PRESENCE = /^(oi|ei|alo|ola|opa|e ai)$|^(oi |ei |alo |opa )?(voce |vc )?(esta |ta |tah )?(me )?(na escuta|escutando|ouvindo|ouve|escuta|ai|aqui|acordado|ligado|presente|pronto|la|funcionando)( ai| ainda| mesmo)?$/;
+
+/** Verdadeiro quando, depois do nome, não veio um comando de verdade (vazio ou só checagem de presença). */
+export function isBareWake(cmd) {
+  const c = norm(cmd);
+  return c === '' || PRESENCE.test(c);
+}
+
 export class VoiceService extends Emitter {
   /** @param {{getSetting:(p:string,d?:any)=>any, env?:any}} deps */
   constructor({ getSetting, env = globalThis }) {
@@ -46,6 +55,9 @@ export class VoiceService extends Emitter {
     this.speaking = false;
     this.paused = false;
     this.armedUntil = 0;
+    this.earlyWake = false;
+    this.wakeTimer = null;
+    this.lastWakeAt = 0;
     this.lastError = null;
     this.voices = [];
     const synth = env.speechSynthesis;
@@ -195,11 +207,23 @@ export class VoiceService extends Emitter {
     return true;
   }
 
+  #emitWake(transcript) {
+    const now = Date.now();
+    if (now - this.lastWakeAt < 1500) return;
+    this.lastWakeAt = now;
+    this.emit('wake', { command: '', transcript });
+  }
+
+  #fireEarly(transcript) {
+    this.earlyWake = true;
+    this.#emitWake(transcript);
+  }
+
   #begin() {
     const Rec = this.env.SpeechRecognition || this.env.webkitSpeechRecognition;
     const rec = new Rec();
     rec.lang = 'pt-BR';
-    rec.interimResults = !this.continuous;
+    rec.interimResults = true;
     rec.continuous = this.continuous;
     rec.maxAlternatives = 1;
     this.rec = rec;
@@ -212,17 +236,34 @@ export class VoiceService extends Emitter {
         const res = ev.results[i];
         const text = res[0].transcript;
         if (this.continuous) {
-          if (!res.isFinal) continue;
+          const wake = this.getSetting('assistant.name', 'Bolt');
+          if (!res.isFinal) {
+            // Resposta imediata: se o que se ouviu até agora é só o nome (ou "Bolt, tá na escuta?")
+            // e a hipótese parou de mudar, o assistente responde sem esperar o fim da frase.
+            const partial = extractAfterWake(text, wake);
+            clearTimeout(this.wakeTimer);
+            if (partial !== null && isBareWake(partial) && Date.now() >= this.armedUntil) {
+              this.wakeTimer = setTimeout(() => this.#fireEarly(text), 380);
+            }
+            continue;
+          }
+          clearTimeout(this.wakeTimer);
           if (Date.now() < this.armedUntil && String(text).trim()) {
             this.armedUntil = 0;
+            this.earlyWake = false;
             this.emit('result', { text: String(text).trim(), final: true, viaWake: true });
             continue;
           }
-          const wake = this.getSetting('assistant.name', 'Bolt');
           const cmd = extractAfterWake(text, wake);
-          if (cmd === null) continue;
+          if (cmd === null) { this.earlyWake = false; continue; }
+          if (isBareWake(cmd)) {
+            if (!this.earlyWake) this.#emitWake(text);
+            this.earlyWake = false;
+            continue;
+          }
+          this.earlyWake = false;
           this.emit('wake', { command: cmd, transcript: text });
-          if (cmd) this.emit('result', { text: cmd, final: true, viaWake: true });
+          this.emit('result', { text: cmd, final: true, viaWake: true });
         } else {
           this.emit('result', { text, final: res.isFinal });
           if (res.isFinal) this.wantListening = false;
@@ -262,6 +303,8 @@ export class VoiceService extends Emitter {
 
   stopListening() {
     this.wantListening = false;
+    clearTimeout(this.wakeTimer);
+    this.earlyWake = false;
     try {
       this.rec?.stop();
     } catch {

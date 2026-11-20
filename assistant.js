@@ -26,6 +26,16 @@ const LEVEL_RANK = { info: 1, attention: 2, critical: 3 };
 const MIN_RANK = { minimal: 3, balanced: 2, detailed: 1 };
 const MAX_KEEP = 60;
 
+const normCmd = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+/** Comandos de voz que controlam o próprio app (e não são perguntas para a IA). */
+export function matchCommand(text) {
+  const t = normCmd(text);
+  if (/\b(sair|saia|desligar|desliga|fechar|fecha|tirar|tira|encerrar|encerra)\b.*\b(modo|tela) (de )?(espera|descanso)\b|\b(modo|tela) (de )?(espera|descanso)\b.*\b(sair|desligar|desliga|fechar|fecha)\b|\b(mostrar|mostra|abrir|abre|volta|voltar) (o |pro |para o )?painel\b|\btela normal\b|\bsair do protetor/.test(t)) return 'wake';
+  if (/\b(modo|tela) (de )?(espera|descanso)\b|\bprotetor de tela\b|\bentrar em espera\b|\bso a cara\b/.test(t)) return 'standby';
+  return null;
+}
+
 export class Assistant extends Emitter {
   /**
    * @param {{settings:any, ai:any, voice:any, connectivity:any, db:any, getContext:()=>any}} deps
@@ -49,7 +59,7 @@ export class Assistant extends Emitter {
     voice.on('wake', ({ command }) => {
       if (!command && this.enabled) {
         voice.arm(10000);
-        this.say(this.driver ? `Pode falar, ${this.driver}.` : 'Pode falar.', { auto: false });
+        this.say(this.#ackLine(), { auto: false });
       }
     });
     voice.on('listening', (on) => this.#setTransient(on ? 'listening' : this.busy ? 'thinking' : voice.speaking ? 'speaking' : null));
@@ -71,6 +81,14 @@ export class Assistant extends Emitter {
   get tone() {
     return this.settings.get('assistant.personality', 'imponente');
   }
+  /** Resposta curta e imediata quando alguém chama o nome ("Bolt", "Bolt, tá na escuta?"). */
+  #ackLine() {
+    const d = this.driver;
+    if (this.tone === 'imponente') return d ? `Presente, ${d}. Pode falar.` : 'Presente. Pode falar.';
+    if (this.tone === 'debochado') return d ? `Opa, ${d}! Pode falar.` : 'Opa! Pode falar.';
+    return d ? `Oi, ${d}. Pode falar.` : 'Oi, pode falar.';
+  }
+
   get state() {
     return this.transient || (this.mood !== 'normal' ? this.mood : this.awake ? 'normal' : 'sleeping');
   }
@@ -165,6 +183,15 @@ export class Assistant extends Emitter {
     const q = String(text || '').trim();
     if (!q || !this.enabled) return null;
     this.#push('user', q, { via });
+    const cmd = matchCommand(q);
+    if (cmd) {
+      const text = cmd === 'standby' ? 'Modo espera ligado. É só chamar meu nome.' : 'Certo, voltando ao painel.';
+      this.#push('assistant', text, { local: true, soul: true });
+      await this.#persist();
+      this.emit('command', { name: cmd });
+      if (cmd === 'standby') this.#speak(text);
+      return { text, local: true };
+    }
     this.busy = true;
     this.#setTransient('thinking');
     const ctx = this.getContext();

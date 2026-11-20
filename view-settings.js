@@ -97,6 +97,8 @@ export function mountSettings(root, ctx) {
       } }) : h('p', { class: 'muted' }, 'Este navegador não tem síntese de voz. O texto continua aparecendo no painel.'),
       row('Microfone', voice.sttSupported ? 'A permissão do microfone só é pedida no primeiro toque na tela, quando a escuta por nome está ligada.' : 'Reconhecimento de voz indisponível neste navegador.', toggle(s.get('assistant.micEnabled'), (v) => { if (v && !voice.sttSupported) { toast('Reconhecimento de voz indisponível neste navegador.', 'warn'); render(); return; } s.set('assistant.micEnabled', v); if (!v) voice.stopListening(); })),
       row('Modo de escuta', 'No modo contínuo o assistente só reage quando ouve o nome dele (experimental; no Chrome usa serviço online e consome bateria).', segmented([['tap', 'Toque para falar'], ['continuous', 'Contínuo por nome']], s.get('assistant.listenMode'), (v) => { s.set('assistant.listenMode', v); voice.stopListening(); })),
+      row('Modo espera (protetor de tela)', 'Mostra só a cara do Bolt, para não distrair. Sai com dois toques ou deslizando para cima; também dá para dizer “Bolt, modo espera”.', select([['0', 'Desligado'], ['1', 'Após 1 min'], ['2', 'Após 2 min'], ['3', 'Após 3 min'], ['5', 'Após 5 min'], ['10', 'Após 10 min']], String(s.get('standby.autoMinutes', 3)), { on: { change: (e) => s.set('standby.autoMinutes', Number(e.target.value)) } })),
+      button({ label: 'Entrar no modo espera agora', icon: 'moon', size: 'sm', onClick: () => ctx.standby?.enter() }),
       button({ label: 'Apagar conversa', icon: 'trash', size: 'sm', kind: 'ghost', onClick: async () => { await ctx.assistant.clearHistory(); toast('Conversa apagada.', 'ok'); } }));
   }
 

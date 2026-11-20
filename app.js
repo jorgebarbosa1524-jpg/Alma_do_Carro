@@ -30,6 +30,7 @@ import { mountSettings } from './view-settings.js';
 import { createAssistantWidget } from './view-assistant.js';
 import { openObdDialog } from './obd-dialog.js';
 import { SoulEvents } from './alma-soul.js';
+import { StandbyMode } from './standby.js';
 
 const ROUTES = {
   panel: mountDashboard,
@@ -262,6 +263,15 @@ async function boot() {
   const soul = new SoulEvents({ engine, getVehicle, getSetting, say: (t) => assistant.say(t), onAwake: (on) => assistant.setAwake(on) });
   ctx.soul = soul;
   soul.start();
+
+  /* ---------- modo espera: protetor de tela com a cara do Bolt ---------- */
+  const standby = new StandbyMode({ assistant, voice, alerts, settings, openAlerts: () => openAlertsPanel(ctx) });
+  ctx.standby = standby;
+  standby.start();
+  assistant.on('command', ({ name }) => {
+    if (name === 'standby') standby.enter();
+    else if (name === 'wake') standby.exit();
+  });
 
   /* ---------- escuta pelo nome: começa no primeiro toque (o navegador exige um gesto) ---------- */
   function maybeListen() {

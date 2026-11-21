@@ -233,7 +233,9 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
  * ===================================================================================== */
 class NativeStt(private val ctx: Context) {
     private var rec: SpeechRecognizer? = null
-    private var onDevice = Build.VERSION.SDK_INT >= 33 && safeOnDeviceAvailable()
+    // Reconhecedor do Google (online): entende melhor o nome "Bolt" e responde mais rápido.
+    // O reconhecedor dentro do aparelho fica desligado (entendia pior em alguns celulares).
+    private var onDevice = false
     private var activeId: String? = null
     private var activeLang = "pt-BR"
     private var activePartial = true
@@ -354,13 +356,6 @@ class NativeStt(private val ctx: Context) {
         override fun onError(error: Int) {
             Alma.beep.muteFor(500)
             if (!mine()) return
-            // Pacote de português do reconhecimento no aparelho ainda não baixado: pede o download (sem bip depois).
-            if (onDevice && (error == 13 || error == 12) && !askedDownload && Build.VERSION.SDK_INT >= 33) {
-                askedDownload = true
-                try {
-                    rec?.triggerModelDownload(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE, activeLang))
-                } catch (_: Throwable) { }
-            }
             // O reconhecimento no aparelho não tem o pacote pt-BR? Cai para o reconhecedor padrão uma vez.
             if (onDevice && retriedFor != id && error in setOf(12, 13, SpeechRecognizer.ERROR_CLIENT, SpeechRecognizer.ERROR_SERVER, 14)) {
                 retriedFor = id

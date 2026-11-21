@@ -194,6 +194,15 @@
     }
     if (type === 'error') {
       var code = a || 'aborted';
+      // Erro 7 depois de um texto provisório: usa esse texto como frase final em vez do erro.
+      if (code === 'no-speech') {
+        var pl = r._results, pend = pl[pl.length - 1];
+        if (pend && !pend.isFinal && pend[0] && String(pend[0].transcript || '').trim()) {
+          N.diag('entendi: "' + pend[0].transcript + '"');
+          r._emitResult(String(pend[0].transcript), true);
+          return;
+        }
+      }
       // Escuta contínua: silêncio e reinícios são normais, não viram aviso na tela.
       if (r.continuous && r._run && (code === 'no-speech' || code === 'aborted')) return;
       if (r.continuous && r._run && code === 'network') {
@@ -208,6 +217,13 @@
       delete recs[id];
       if (r._id !== id) return;
       r._id = null;
+      // O Google às vezes mostra a frase só como texto provisório e encerra com erro 7, sem
+      // confirmar. Nesse caso, a última frase entendida vale como frase final.
+      var list = r._results, last = list[list.length - 1];
+      if (last && !last.isFinal && last[0] && String(last[0].transcript || '').trim() && (r._run || !r.continuous)) {
+        N.diag('entendi: "' + last[0].transcript + '"');
+        r._emitResult(String(last[0].transcript), true);
+      }
       if (r.continuous && r._run) {
         // Se o reconhecimento falhar logo de cara, espera cada vez mais antes de tentar de novo
         // (evita um laço de reinícios que trava o app).

@@ -102,8 +102,15 @@ class FocusManager(ctx: Context) {
  * Toca como "orientação de navegação": no Android Auto ela sai por cima da música.
  * ===================================================================================== */
 class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
-    private val tts = TextToSpeech(ctx, this)
+    companion object {
+        const val GOOGLE_TTS = "com.google.android.tts"
+    }
+
+    // Prefere a voz do Google (a mesma do Chrome). No Xiaomi o padrão costuma ser outro mecanismo.
+    private var triedDefault = !installed(ctx, GOOGLE_TTS)
+    private var tts: TextToSpeech = if (triedDefault) TextToSpeech(ctx, this) else TextToSpeech(ctx, this, GOOGLE_TTS)
     private var ready = false
+    private var failed = false
     private val pending = ArrayList<() -> Unit>()
     private var voicesCache = "[]"
     private var currentId: String? = null
@@ -112,6 +119,27 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
         ready = status == TextToSpeech.SUCCESS
         if (!ready) {
             Log.w(Alma.TAG, "TextToSpeech indisponível ($status)")
+            if (!triedDefault) {
+                // A voz do Google falhou: tenta o mecanismo padrão do aparelho.
+                triedDefault = true
+                try { tts.shutdown() } catch (_: Throwable) { }
+                tts = TextToSpeech(ctx, this)
+                return
+            }
+            // Nenhuma voz funcionou: avisa o painel para ele não ficar travado esperando a fala.
+            failed = true
+            val list = ArrayList(pending)
+            pending.clear()
+            list.forEach { it() }
+            return
+        }
+        // Sem português instalado nessa voz? Usa o mecanismo padrão do aparelho.
+        val lang = try { tts.isLanguageAvailable(Locale("pt", "BR")) } catch (_: Throwable) { TextToSpeech.LANG_NOT_SUPPORTED }
+        if (lang < TextToSpeech.LANG_AVAILABLE && !triedDefault) {
+            triedDefault = true
+            ready = false
+            try { tts.shutdown() } catch (_: Throwable) { }
+            tts = TextToSpeech(ctx, this)
             return
         }
         tts.setAudioAttributes(
@@ -200,8 +228,19 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
     }
 
     fun speak(id: String, text: String, lang: String, voiceName: String, rate: Float, pitch: Float, volume: Float) {
+        if (failed) {
+            event(id, "error", "synthesis-unavailable")
+            return
+        }
         if (!ready) {
             pending.add { speak(id, text, lang, voiceName, rate, pitch, volume) }
+            // Nunca deixa o painel preso esperando: se a voz não ficar pronta em 6 s, desiste desta fala.
+            Alma.main.postDelayed({
+                if (!ready && pending.isNotEmpty()) {
+                    pending.clear()
+                    event(id, "error", "synthesis-unavailable")
+                }
+            }, 6000)
             return
         }
         pickVoice(voiceName, lang)?.let { try { tts.setVoice(it) } catch (_: Throwable) { } }
@@ -235,6 +274,16 @@ class NativeStt(private val ctx: Context) {
     private var activePartial = true
     private var retriedFor: String? = null
 
+    /** Serviço de reconhecimento do Google (o mesmo do Chrome). No Xiaomi o padrão costuma ser outro. */
+    private fun googleRecognizer(): android.content.ComponentName? = try {
+        val services = ctx.packageManager.queryIntentServices(Intent(android.speech.RecognitionService.SERVICE_INTERFACE), 0)
+        val prefer = listOf("com.google.android.googlequicksearchbox", "com.google.android.tts", "com.google.android.as")
+        prefer.firstNotNullOfOrNull { pkg -> services.firstOrNull { it.serviceInfo.packageName == pkg } }
+            ?.let { android.content.ComponentName(it.serviceInfo.packageName, it.serviceInfo.name) }
+    } catch (_: Throwable) {
+        null
+    }
+
     private fun safeOnDeviceAvailable(): Boolean = try {
         Build.VERSION.SDK_INT >= 33 && SpeechRecognizer.isOnDeviceRecognitionAvailable(ctx)
     } catch (_: Throwable) {
@@ -244,7 +293,7 @@ class NativeStt(private val ctx: Context) {
     private fun recognizer(): SpeechRecognizer {
         rec?.let { return it }
         val r = if (onDevice && Build.VERSION.SDK_INT >= 33) SpeechRecognizer.createOnDeviceSpeechRecognizer(ctx)
-        else SpeechRecognizer.createSpeechRecognizer(ctx)
+        else googleRecognizer()?.let { SpeechRecognizer.createSpeechRecognizer(ctx, it) } ?: SpeechRecognizer.createSpeechRecognizer(ctx)
         rec = r
         return r
     }
@@ -360,4 +409,11 @@ class NativeStt(private val ctx: Context) {
             ev(id, "end")
         }
     }
+}
+
+private fun installed(ctx: Context, pkg: String): Boolean = try {
+    ctx.packageManager.getPackageInfo(pkg, 0)
+    true
+} catch (_: Throwable) {
+    false
 }

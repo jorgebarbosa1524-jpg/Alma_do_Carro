@@ -113,6 +113,8 @@
     this._session();
   };
   SpeechRecognition.prototype._session = function () {
+    this._t0 = Date.now();
+    this._heard = false;
     var id = 'r' + ++rseq;
     this._id = id;
     recs[id] = this;
@@ -156,6 +158,7 @@
       return;
     }
     if (type === 'result') {
+      r._heard = true;
       checkWake(a);
       r._emitResult(a, isFinal);
       return;
@@ -177,7 +180,11 @@
       if (r._id !== id) return;
       r._id = null;
       if (r.continuous && r._run) {
-        setTimeout(function () { if (r._run && !r._id) r._session(); }, 120);
+        // Se o reconhecimento falhar logo de cara, espera cada vez mais antes de tentar de novo
+        // (evita um laço de reinícios que trava o app).
+        var quick = !r._heard && Date.now() - (r._t0 || 0) < 1500;
+        r._backoff = quick ? Math.min((r._backoff || 150) * 2, 5000) : 120;
+        setTimeout(function () { if (r._run && !r._id) r._session(); }, r._backoff);
         return;
       }
       r._run = false;

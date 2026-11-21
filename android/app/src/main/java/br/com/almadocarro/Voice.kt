@@ -143,7 +143,7 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
         // e abre uma vez a tela para baixar o português. Nunca troca por outro app de voz
         // (no celular do Jorge o padrão era o BookFusion, que não fala português).
         val lang = try { tts.isLanguageAvailable(Locale("pt", "BR")) } catch (_: Throwable) { TextToSpeech.LANG_NOT_SUPPORTED }
-        if (lang < TextToSpeech.LANG_AVAILABLE && tts.defaultEngine == GOOGLE_TTS) {
+        if (lang < TextToSpeech.LANG_AVAILABLE && !triedDefault) {
             val prefs = ctx.getSharedPreferences("alma_tts", Context.MODE_PRIVATE)
             if (!prefs.getBoolean("asked_install", false)) {
                 prefs.edit().putBoolean("asked_install", true).apply()

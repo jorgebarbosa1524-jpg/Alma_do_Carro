@@ -28,8 +28,8 @@ class JsBridge {
     /* ---------------- voz: escuta ---------------- */
 
     @JavascriptInterface
-    fun sttStart(id: String, lang: String, partial: Boolean) {
-        Alma.main.post { Alma.stt.start(id, lang, partial) }
+    fun sttStart(id: String, lang: String, partial: Boolean, wake: String) {
+        Alma.main.post { Alma.stt.start(id, lang, partial, wake) }
     }
 
     @JavascriptInterface

@@ -24,8 +24,8 @@ android {
         applicationId = "br.com.almadocarro"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "1.2.2"
+        versionCode = 9
+        versionName = "1.2.3"
     }
 
     signingConfigs {

@@ -138,7 +138,7 @@
     var id = 'r' + ++rseq;
     this._id = id;
     recs[id] = this;
-    A.sttStart(id, String(this.lang || 'pt-BR'), !!(this.interimResults || this.continuous));
+    A.sttStart(id, String(this.lang || 'pt-BR'), !!(this.interimResults || this.continuous), String(wakeName()));
   };
   SpeechRecognition.prototype.stop = function () {
     if (!this._run) return;
@@ -170,7 +170,7 @@
     fire(this, 'result', { resultIndex: index, results: results });
   };
 
-  N.stt = function (id, type, a, isFinal) {
+  N.stt = function (id, type, a, isFinal, altsJson) {
     var r = recs[id];
     if (!r) return;
     if (type === 'start') {
@@ -179,6 +179,14 @@
     }
     if (type === 'result') {
       r._heard = true;
+      // Entre as interpretações do Google, prefere a que tem o nome do assistente.
+      var alts = parse(altsJson, null);
+      if (alts && alts.length > 1 && wakeFn) {
+        var name = wakeName();
+        if (wakeFn(a, name) === null) {
+          for (var k = 0; k < alts.length; k++) { if (wakeFn(alts[k], name) !== null) { a = alts[k]; break; } }
+        }
+      }
       N.diag((isFinal ? 'entendi: "' : 'ouvindo: "') + a + '"');
       checkWake(a);
       r._emitResult(a, isFinal);

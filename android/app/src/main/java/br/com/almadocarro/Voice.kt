@@ -278,6 +278,7 @@ class NativeStt(private val ctx: Context) {
     private var activeId: String? = null
     private var activeLang = "pt-BR"
     private var activePartial = true
+    private var activeWake = "Bolt"
     private var retriedFor: String? = null
 
     /** Serviço de reconhecimento do Google (o mesmo do Chrome). No Xiaomi o padrão costuma ser outro. */
@@ -317,11 +318,12 @@ class NativeStt(private val ctx: Context) {
         rec = null
     }
 
-    private fun ev(id: String, type: String, a: String? = null, final: Boolean = false) {
-        Alma.js("window.__almaNative&&__almaNative.stt(${q(id)},${q(type)},${q(a)},$final)")
+    private fun ev(id: String, type: String, a: String? = null, final: Boolean = false, alts: List<String>? = null) {
+        val altsJson = if (alts.isNullOrEmpty()) "null" else q(org.json.JSONArray(alts).toString())
+        Alma.js("window.__almaNative&&__almaNative.stt(${q(id)},${q(type)},${q(a)},$final,$altsJson)")
     }
 
-    fun start(id: String, lang: String, partial: Boolean) {
+    fun start(id: String, lang: String, partial: Boolean, wake: String = "Bolt") {
         if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ev(id, "error", "not-allowed"); ev(id, "end"); return
         }
@@ -335,6 +337,7 @@ class NativeStt(private val ctx: Context) {
         activeId = id
         activeLang = lang.ifBlank { "pt-BR" }
         activePartial = partial
+        activeWake = wake.ifBlank { "Bolt" }
         begin(id)
     }
 
@@ -349,7 +352,15 @@ class NativeStt(private val ctx: Context) {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, activeLang)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, activeLang)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, activePartial)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            // Pede várias interpretações: o painel escolhe a que tem o nome do assistente.
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
+            // Android 13+: avisa o reconhecedor que o nome do assistente é esperado (entende "Bolt" em vez de "vou").
+            if (Build.VERSION.SDK_INT >= 33) {
+                putStringArrayListExtra(
+                    RecognizerIntent.EXTRA_BIASING_STRINGS,
+                    arrayListOf(activeWake, "$activeWake,", "Ei $activeWake", "$activeWake como está o motor", "$activeWake você está me ouvindo")
+                )
+            }
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, ctx.packageName)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1200L)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1000L)
@@ -388,14 +399,14 @@ class NativeStt(private val ctx: Context) {
 
         override fun onPartialResults(b: Bundle?) {
             if (!mine()) return
-            val t = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.trim().orEmpty()
-            if (t.isNotEmpty()) ev(id, "result", t, false)
+            val all = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty().map { it.trim() }.filter { it.isNotEmpty() }
+            if (all.isNotEmpty()) ev(id, "result", all.first(), false, all)
         }
 
         override fun onResults(b: Bundle?) {
             if (!mine()) return
-            val t = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.trim().orEmpty()
-            if (t.isNotEmpty()) ev(id, "result", t, true) else ev(id, "error", "no-speech")
+            val all = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty().map { it.trim() }.filter { it.isNotEmpty() }
+            if (all.isNotEmpty()) ev(id, "result", all.first(), true, all) else ev(id, "error", "no-speech")
             activeId = null
             ev(id, "end")
         }

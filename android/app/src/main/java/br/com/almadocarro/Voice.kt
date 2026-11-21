@@ -364,13 +364,6 @@ class NativeStt(private val ctx: Context) {
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, activePartial)
             // Pede várias interpretações: o painel escolhe a que tem o nome do assistente.
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
-            // Android 13+: avisa o reconhecedor que o nome do assistente é esperado (entende "Bolt" em vez de "vou").
-            if (Build.VERSION.SDK_INT >= 33) {
-                putStringArrayListExtra(
-                    RecognizerIntent.EXTRA_BIASING_STRINGS,
-                    arrayListOf(activeWake, "$activeWake,", "Ei $activeWake", "$activeWake como está o motor", "$activeWake você está me ouvindo")
-                )
-            }
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, ctx.packageName)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1200L)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1000L)

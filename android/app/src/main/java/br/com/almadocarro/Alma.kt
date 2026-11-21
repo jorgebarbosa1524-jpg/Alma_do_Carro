@@ -24,6 +24,7 @@ object Alma {
     val main = Handler(Looper.getMainLooper())
 
     val focus by lazy { FocusManager(app) }
+    val beep by lazy { BeepMuter(app) }
     val tts by lazy { NativeTts(app) }
     val stt by lazy { NativeStt(app) }
     val obd by lazy { ObdBridge(app) }
@@ -40,6 +41,7 @@ object Alma {
 
     fun init(application: Application) {
         app = application
+        main.post { beep }
         try {
             CarConnection(application).type.observeForever { type ->
                 carConnected = type == CarConnection.CONNECTION_TYPE_PROJECTION ||

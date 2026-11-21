@@ -116,7 +116,7 @@
     var id = 'r' + ++rseq;
     this._id = id;
     recs[id] = this;
-    A.sttStart(id, String(this.lang || 'pt-BR'), !!(this.interimResults || this.continuous));
+    A.sttStart(id, String(this.lang || 'pt-BR'), !!(this.interimResults || this.continuous), !!this.continuous);
   };
   SpeechRecognition.prototype.stop = function () {
     if (!this._run) return;

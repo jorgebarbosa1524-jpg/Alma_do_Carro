@@ -187,6 +187,9 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
 
     fun voicesJson(): String = voicesCache
 
+    /** O Bolt está falando agora (nada pode ser silenciado). */
+    val speakingNow: Boolean get() = currentId != null
+
     private fun pickVoice(name: String, lang: String): Voice? {
         return try {
             val all = tts.voices.orEmpty()
@@ -204,6 +207,7 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
             pending.add { speak(id, text, lang, voiceName, rate, pitch, volume) }
             return
         }
+        Alma.beep.unmuteNow()
         pickVoice(voiceName, lang)?.let { try { tts.setVoice(it) } catch (_: Throwable) { } }
         tts.setSpeechRate(rate.coerceIn(0.1f, 3f))
         tts.setPitch(pitch.coerceIn(0.1f, 2f))
@@ -233,6 +237,8 @@ class NativeStt(private val ctx: Context) {
     private var activeId: String? = null
     private var activeLang = "pt-BR"
     private var activePartial = true
+    private var activeContinuous = false
+    private var askedDownload = false
     private var retriedFor: String? = null
 
     private fun safeOnDeviceAvailable(): Boolean = try {
@@ -258,7 +264,7 @@ class NativeStt(private val ctx: Context) {
         Alma.js("window.__almaNative&&__almaNative.stt(${q(id)},${q(type)},${q(a)},$final)")
     }
 
-    fun start(id: String, lang: String, partial: Boolean) {
+    fun start(id: String, lang: String, partial: Boolean, continuous: Boolean = false) {
         if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ev(id, "error", "not-allowed"); ev(id, "end"); return
         }
@@ -272,6 +278,7 @@ class NativeStt(private val ctx: Context) {
         activeId = id
         activeLang = lang.ifBlank { "pt-BR" }
         activePartial = partial
+        activeContinuous = continuous
         begin(id)
     }
 
@@ -290,8 +297,12 @@ class NativeStt(private val ctx: Context) {
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, ctx.packageName)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1200L)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1000L)
+            // Escuta contínua: cada sessão dura mais, então reinicia (e bipa) bem menos.
+            if (activeContinuous) putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 15000L)
             if (onDevice) putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         }
+        // O som de "comecei a ouvir" do Android toca agora: silencia só esse instante.
+        Alma.beep.muteFor(1500)
         try {
             r.startListening(intent)
         } catch (e: Throwable) {
@@ -316,11 +327,14 @@ class NativeStt(private val ctx: Context) {
     private inner class Listener(private val id: String) : RecognitionListener {
         private fun mine() = activeId == id
 
-        override fun onReadyForSpeech(params: Bundle?) { if (mine()) ev(id, "start") }
+        override fun onReadyForSpeech(params: Bundle?) {
+            Alma.beep.muteFor(700)
+            if (mine()) ev(id, "start")
+        }
         override fun onBeginningOfSpeech() {}
         override fun onRmsChanged(rmsdB: Float) {}
         override fun onBufferReceived(buffer: ByteArray?) {}
-        override fun onEndOfSpeech() {}
+        override fun onEndOfSpeech() { Alma.beep.muteFor(900) }
         override fun onEvent(eventType: Int, params: Bundle?) {}
 
         override fun onPartialResults(b: Bundle?) {
@@ -330,6 +344,7 @@ class NativeStt(private val ctx: Context) {
         }
 
         override fun onResults(b: Bundle?) {
+            Alma.beep.muteFor(500)
             if (!mine()) return
             val t = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.trim().orEmpty()
             if (t.isNotEmpty()) ev(id, "result", t, true) else ev(id, "error", "no-speech")
@@ -338,7 +353,15 @@ class NativeStt(private val ctx: Context) {
         }
 
         override fun onError(error: Int) {
+            Alma.beep.muteFor(500)
             if (!mine()) return
+            // Pacote de português do reconhecimento no aparelho ainda não baixado: pede o download (sem bip depois).
+            if (onDevice && (error == 13 || error == 12) && !askedDownload && Build.VERSION.SDK_INT >= 33) {
+                askedDownload = true
+                try {
+                    rec?.triggerModelDownload(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE, activeLang))
+                } catch (_: Throwable) { }
+            }
             // O reconhecimento no aparelho não tem o pacote pt-BR? Cai para o reconhecedor padrão uma vez.
             if (onDevice && retriedFor != id && error in setOf(12, 13, SpeechRecognizer.ERROR_CLIENT, SpeechRecognizer.ERROR_SERVER, 14)) {
                 retriedFor = id
@@ -359,5 +382,66 @@ class NativeStt(private val ctx: Context) {
             ev(id, "error", code)
             ev(id, "end")
         }
+    }
+}
+
+/* =====================================================================================
+ * Silencia o "bip" que o reconhecimento de voz do Android toca a cada início de escuta.
+ * Só os sons de sistema/notificação, por menos de 2 segundos. A música do Spotify não é tocada:
+ * o volume de mídia só é silenciado quando nada está tocando. Se o app fechar no meio,
+ * na próxima abertura os volumes são devolvidos.
+ * ===================================================================================== */
+class BeepMuter(ctx: Context) {
+    private val am = ctx.getSystemService(AudioManager::class.java)
+    private val prefs = ctx.getSharedPreferences("alma_beep", Context.MODE_PRIVATE)
+    private val muted = ArrayList<Int>()
+    private var until = 0L
+    private val check = Runnable { tick() }
+
+    init {
+        // Recupera de um fechamento inesperado com algo silenciado.
+        prefs.getString("muted", "")!!.split(",").mapNotNull { it.toIntOrNull() }.forEach {
+            try { am.adjustStreamVolume(it, AudioManager.ADJUST_UNMUTE, 0) } catch (_: Throwable) { }
+        }
+        prefs.edit().remove("muted").apply()
+    }
+
+    fun muteFor(ms: Long) {
+        if (!prefs.getBoolean("enabled", true)) return
+        if (Alma.tts.speakingNow) return
+        val end = SystemClock.uptimeMillis() + ms
+        if (end > until) until = end
+        if (muted.isEmpty()) {
+            val streams = arrayListOf(AudioManager.STREAM_SYSTEM, AudioManager.STREAM_NOTIFICATION)
+            if (!am.isMusicActive) streams += AudioManager.STREAM_MUSIC
+            for (st in streams) {
+                try {
+                    if (!am.isStreamMute(st)) {
+                        am.adjustStreamVolume(st, AudioManager.ADJUST_MUTE, 0)
+                        muted += st
+                    }
+                } catch (_: Throwable) {
+                }
+            }
+            prefs.edit().putString("muted", muted.joinToString(",")).apply()
+        }
+        Alma.main.removeCallbacks(check)
+        Alma.main.postDelayed(check, (until - SystemClock.uptimeMillis()).coerceAtLeast(50))
+    }
+
+    private fun tick() {
+        val left = until - SystemClock.uptimeMillis()
+        if (left > 20) Alma.main.postDelayed(check, left) else unmuteNow()
+    }
+
+    fun unmuteNow() {
+        Alma.main.removeCallbacks(check)
+        until = 0
+        if (muted.isEmpty()) return
+        for (st in muted) {
+            try { am.adjustStreamVolume(st, AudioManager.ADJUST_UNMUTE, 0) } catch (_: Throwable) { }
+        }
+        muted.clear()
+        prefs.edit().remove("muted").apply()
     }
 }

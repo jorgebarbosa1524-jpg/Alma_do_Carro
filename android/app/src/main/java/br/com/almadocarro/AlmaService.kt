@@ -60,6 +60,8 @@ class AlmaService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            Alma.beep.unmuteNow()
+            Alma.beep.ensureMediaAudible()
             Alma.obd.disconnect()
             Alma.web.eval("try{__alma.voice.stopListening()}catch(e){}")
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)

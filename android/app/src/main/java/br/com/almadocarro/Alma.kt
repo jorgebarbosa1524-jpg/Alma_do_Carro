@@ -24,6 +24,7 @@ object Alma {
     val main = Handler(Looper.getMainLooper())
 
     val focus by lazy { FocusManager(app) }
+    val beep by lazy { BeepMuter(app) }
     val tts by lazy { NativeTts(app) }
     val stt by lazy { NativeStt(app) }
     val obd by lazy { ObdBridge(app) }
@@ -40,6 +41,7 @@ object Alma {
 
     fun init(application: Application) {
         app = application
+        main.post { beep }
         // Versões 1.1.x podiam deixar o volume de mídia no mudo: devolve o som (é por ele que o Bolt fala).
         try {
             val am = application.getSystemService(android.media.AudioManager::class.java)

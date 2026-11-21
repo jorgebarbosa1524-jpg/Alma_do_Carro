@@ -40,6 +40,14 @@ object Alma {
 
     fun init(application: Application) {
         app = application
+        // Versões 1.1.x podiam deixar o volume de mídia no mudo: devolve o som (é por ele que o Bolt fala).
+        try {
+            val am = application.getSystemService(android.media.AudioManager::class.java)
+            if (am.isStreamMute(android.media.AudioManager.STREAM_MUSIC)) {
+                am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.ADJUST_UNMUTE, 0)
+            }
+        } catch (_: Throwable) {
+        }
         try {
             CarConnection(application).type.observeForever { type ->
                 carConnected = type == CarConnection.CONNECTION_TYPE_PROJECTION ||

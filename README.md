@@ -7,10 +7,6 @@ por `node server.js` ou qualquer servidor estático; o arquivo único é gerado 
 - IA do Claude: funciona quando o app roda dentro do Claude; fora dele, falas locais (ou backend com `server.js`).
 - Voz: Configurações > Assistente > "Testar voz" mostra o motivo se a voz não sair.
 
-## Android Auto
-
-Para usar na tela da multimídia pelo Android Auto e com o Bolt ouvindo em segundo plano (inclusive com Spotify tocando), use o app Android da pasta `android/`. Passo a passo em `ANDROID_AUTO.md`.
-
 ## Modo espera (protetor de tela do Bolt)
 
 Mostra só a cara do Bolt (os olhos), sem distração, para quem está dirigindo.

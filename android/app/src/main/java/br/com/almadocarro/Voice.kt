@@ -115,7 +115,7 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
     fun describe(): String = when {
         failed -> "nenhuma voz funcionou"
         !ready -> "carregando"
-        else -> try { tts.defaultEngine ?: "?" } catch (_: Throwable) { "?" }
+        else -> (if (triedDefault) "padrão do celular: " + (try { tts.defaultEngine } catch (_: Throwable) { "?" }) else GOOGLE_TTS)
     }
     private val pending = ArrayList<() -> Unit>()
     private var voicesCache = "[]"
@@ -139,14 +139,23 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
             list.forEach { it() }
             return
         }
-        // Sem português instalado nessa voz? Usa o mecanismo padrão do aparelho.
+        // Voz do Google sem o português baixado: continua com ela (ela baixa/usa a voz online)
+        // e abre uma vez a tela para baixar o português. Nunca troca por outro app de voz
+        // (no celular do Jorge o padrão era o BookFusion, que não fala português).
         val lang = try { tts.isLanguageAvailable(Locale("pt", "BR")) } catch (_: Throwable) { TextToSpeech.LANG_NOT_SUPPORTED }
-        if (lang < TextToSpeech.LANG_AVAILABLE && !triedDefault) {
-            triedDefault = true
-            ready = false
-            try { tts.shutdown() } catch (_: Throwable) { }
-            tts = TextToSpeech(ctx, this)
-            return
+        if (lang < TextToSpeech.LANG_AVAILABLE && tts.defaultEngine == GOOGLE_TTS) {
+            val prefs = ctx.getSharedPreferences("alma_tts", Context.MODE_PRIVATE)
+            if (!prefs.getBoolean("asked_install", false)) {
+                prefs.edit().putBoolean("asked_install", true).apply()
+                try {
+                    ctx.startActivity(
+                        Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)
+                            .setPackage(GOOGLE_TTS)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                } catch (_: Throwable) {
+                }
+            }
         }
         tts.setAudioAttributes(
             AudioAttributes.Builder()
@@ -274,7 +283,8 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
  * ===================================================================================== */
 class NativeStt(private val ctx: Context) {
     private var rec: SpeechRecognizer? = null
-    private var onDevice = Build.VERSION.SDK_INT >= 33 && safeOnDeviceAvailable()
+    // Reconhecimento do Google (online): entende bem melhor que o reconhecimento "no aparelho".
+    private var onDevice = false
     private var activeId: String? = null
     private var activeLang = "pt-BR"
     private var activePartial = true

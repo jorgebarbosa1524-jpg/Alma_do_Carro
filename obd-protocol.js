@@ -23,7 +23,7 @@ export class ObdError extends Error {
 const AT_ALLOWED = [
   /^ATZ$/, /^ATWS$/, /^ATD$/, /^ATI$/, /^AT@1$/,
   /^ATE[01]$/, /^ATL[01]$/, /^ATS[01]$/, /^ATH[01]$/, /^ATAT[0-2]$/,
-  /^ATSP[0-9A-C]$/, /^ATDPN?$/, /^ATRV$/, /^ATST[0-9A-F]{1,2}$/, /^ATCAF[01]$/,
+  /^ATSP[0-9A-C]$/, /^ATSPA[1-9A-C]$/, /^ATDPN?$/, /^ATRV$/, /^ATST[0-9A-F]{1,2}$/, /^ATCAF[01]$/,
 ];
 const OBD_READ_ALLOWED = [
   /^01[0-9A-F]{2}$/, // modo 01: dados atuais
@@ -219,10 +219,12 @@ export const PROTOCOL_NAMES = {
  * As requisições são serializadas em fila (uma por vez), com timeout individual.
  */
 export class Elm327Session extends Emitter {
-  constructor(transport, { timeoutMs = 3000 } = {}) {
+  constructor(transport, { timeoutMs = 3000, protocolHint = null } = {}) {
     super();
     this.t = transport;
     this.timeoutMs = timeoutMs;
+    // Protocolo a tentar primeiro (ex.: '1' = J1850 PWM dos Ford); se falhar, o ELM327 cai na busca automática.
+    this.protocolHint = typeof protocolHint === 'string' && /^[1-9A-C]$/i.test(protocolHint) ? protocolHint.toUpperCase() : null;
     this.buf = '';
     this.waiter = null;
     this.queue = Promise.resolve();
@@ -317,7 +319,7 @@ export class Elm327Session extends Emitter {
       if (e.code !== 'UNKNOWN_COMMAND') throw e;
     }
     void zLines;
-    for (const c of ['ATE0', 'ATL0', 'ATS0', 'ATH0', 'ATAT1', 'ATSP0']) {
+    for (const c of ['ATE0', 'ATL0', 'ATS0', 'ATH0', 'ATAT1', this.protocolHint ? `ATSPA${this.protocolHint}` : 'ATSP0']) {
       onStep?.(`Configurando (${c})`);
       await this.request(c, { timeout: 4000 });
     }

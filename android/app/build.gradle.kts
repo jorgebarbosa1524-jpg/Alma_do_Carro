@@ -37,6 +37,20 @@ android {
         }
     }
 
+    // Uma versão do app por carro. Mesmo painel; muda só o perfil de fábrica (assets/native/profile.js).
+    flavorDimensions += "carro"
+    productFlavors {
+        create("renegade") {
+            dimension = "carro"
+            resValue("string", "app_name", "Alma do Carro")
+        }
+        create("ecosport") {
+            dimension = "carro"
+            applicationIdSuffix = ".ecosport"
+            resValue("string", "app_name", "Alma da EcoSport")
+        }
+    }
+
     buildTypes {
         getByName("debug") {
             signingConfig = signingConfigs.getByName("alma")

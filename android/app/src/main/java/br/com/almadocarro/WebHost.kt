@@ -46,7 +46,7 @@ class WebHost(private val app: Application) {
     companion object {
         const val HOST = "appassets.androidplatform.net"
         const val START_URL = "https://$HOST/assets/www/index.html?nosw"
-        private const val INJECT = "<script src=\"/assets/native/alma-android.js\"></script>"
+        private const val INJECT = "<script src=\"/assets/native/profile.js\"></script><script src=\"/assets/native/alma-android.js\"></script>"
     }
 
     private val ctx = android.content.MutableContextWrapper(app)

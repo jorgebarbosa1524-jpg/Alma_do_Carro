@@ -295,10 +295,9 @@ class NativeStt(private val ctx: Context) {
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, activePartial)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, ctx.packageName)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1200L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1000L)
-            // Escuta contínua: cada sessão dura mais, então reinicia (e bipa) bem menos.
-            if (activeContinuous) putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 15000L)
+            // Pausa curta para dar a frase por terminada: resposta mais rápida.
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 800L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 600L)
             if (onDevice) putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         }
         // O som de "comecei a ouvir" do Android toca agora: silencia só esse instante.

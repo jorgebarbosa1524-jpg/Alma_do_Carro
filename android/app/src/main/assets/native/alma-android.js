@@ -27,6 +27,25 @@
     Object.defineProperty(navigator, 'userActivation', { configurable: true, get: function () { return { hasBeenActive: true, isActive: true }; } });
   } catch (e) { /* ignora */ }
 
+  /* ============ DIAGNÓSTICO DE VOZ (linha discreta no rodapé, some sozinha) ============ */
+  var diagEl = null, diagT = null;
+  N.diag = function (msg) {
+    try {
+      if (!document.body) return;
+      if (!diagEl) {
+        diagEl = document.createElement('div');
+        diagEl.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;padding:6px 10px;border-radius:8px;' +
+          'background:rgba(0,0,0,.78);color:#9fe8ff;font:12px/1.35 monospace;pointer-events:none;white-space:pre-wrap;';
+        document.body.appendChild(diagEl);
+      }
+      var info = parse(A.voiceInfo ? A.voiceInfo() : '{}', {});
+      diagEl.textContent = '[voz ' + (info.version || '') + '] ' + msg + '\nescuta: ' + (info.escuta || '?') + ' | fala: ' + (info.fala || '?');
+      diagEl.style.display = 'block';
+      clearTimeout(diagT);
+      diagT = setTimeout(function () { diagEl.style.display = 'none'; }, 6000);
+    } catch (e) { /* ignora */ }
+  };
+
   /* =============================== FALA (speechSynthesis) =============================== */
   function SpeechSynthesisVoice(o) {
     this.name = o.name; this.voiceURI = o.name; this.lang = o.lang;
@@ -72,6 +91,7 @@
     }
     delete utts[id];
     if (currentU === id) { synth.speaking = false; synth.pending = false; currentU = null; }
+    if (type === 'error' && err !== 'interrupted') N.diag('erro da fala: ' + err);
     if (type === 'end') fire(u, 'end', { utterance: u });
     else fire(u, 'error', { utterance: u, error: err || 'synthesis-failed' });
   };
@@ -97,7 +117,7 @@
   function checkWake(text) {
     if (!text) return;
     var heard = wakeFn ? wakeFn(text, wakeName()) !== null : new RegExp('\\b' + wakeName() + '\\b', 'i').test(text);
-    if (heard && Date.now() - lastWakeSignal > 4000) { lastWakeSignal = Date.now(); A.wakeHeard(); }
+    if (heard && Date.now() - lastWakeSignal > 4000) { lastWakeSignal = Date.now(); A.wakeHeard(); N.diag('ouvi o nome "' + wakeName() + '"'); }
   }
 
   function SpeechRecognition() {
@@ -159,6 +179,7 @@
     }
     if (type === 'result') {
       r._heard = true;
+      N.diag((isFinal ? 'entendi: "' : 'ouvindo: "') + a + '"');
       checkWake(a);
       r._emitResult(a, isFinal);
       return;

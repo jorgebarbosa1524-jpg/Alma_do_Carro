@@ -45,6 +45,13 @@ class JsBridge {
     @JavascriptInterface
     fun wakeHeard() = Alma.onWakeHeard()
 
+    @JavascriptInterface
+    fun voiceInfo(): String = JSONObject()
+        .put("version", BuildConfig.VERSION_NAME)
+        .put("escuta", Alma.stt.engineName)
+        .put("fala", Alma.tts.describe())
+        .toString()
+
     /* ---------------- avisos para a tela do carro ---------------- */
 
     @JavascriptInterface

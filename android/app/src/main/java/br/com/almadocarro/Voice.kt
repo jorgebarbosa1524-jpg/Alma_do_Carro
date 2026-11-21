@@ -111,6 +111,12 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
     private var tts: TextToSpeech = if (triedDefault) TextToSpeech(ctx, this) else TextToSpeech(ctx, this, GOOGLE_TTS)
     private var ready = false
     private var failed = false
+
+    fun describe(): String = when {
+        failed -> "nenhuma voz funcionou"
+        !ready -> "carregando"
+        else -> try { tts.defaultEngine ?: "?" } catch (_: Throwable) { "?" }
+    }
     private val pending = ArrayList<() -> Unit>()
     private var voicesCache = "[]"
     private var currentId: String? = null
@@ -290,10 +296,18 @@ class NativeStt(private val ctx: Context) {
         false
     }
 
+    @Volatile var engineName = "ainda não iniciou"
+
     private fun recognizer(): SpeechRecognizer {
         rec?.let { return it }
+        val g = if (onDevice) null else googleRecognizer()
+        engineName = when {
+            onDevice -> "no aparelho"
+            g != null -> g.packageName
+            else -> "padrão do celular"
+        }
         val r = if (onDevice && Build.VERSION.SDK_INT >= 33) SpeechRecognizer.createOnDeviceSpeechRecognizer(ctx)
-        else googleRecognizer()?.let { SpeechRecognizer.createSpeechRecognizer(ctx, it) } ?: SpeechRecognizer.createSpeechRecognizer(ctx)
+        else g?.let { SpeechRecognizer.createSpeechRecognizer(ctx, it) } ?: SpeechRecognizer.createSpeechRecognizer(ctx)
         rec = r
         return r
     }
@@ -405,6 +419,7 @@ class NativeStt(private val ctx: Context) {
                 else -> "aborted"
             }
             activeId = null
+            Alma.js("window.__almaNative&&__almaNative.diag&&__almaNative.diag('erro da escuta: $code ($error)')")
             ev(id, "error", code)
             ev(id, "end")
         }

@@ -28,7 +28,7 @@
   } catch (e) { /* ignora */ }
 
   /* ============ DIAGNÓSTICO DE VOZ (linha discreta no rodapé, some sozinha) ============ */
-  var diagEl = null, diagT = null;
+  var diagEl = null, diagT = null, diagHist = [];
   N.diag = function (msg) {
     try {
       if (!document.body) return;
@@ -39,10 +39,17 @@
         document.body.appendChild(diagEl);
       }
       var info = parse(A.voiceInfo ? A.voiceInfo() : '{}', {});
-      diagEl.textContent = '[voz ' + (info.version || '') + '] ' + msg + '\nescuta: ' + (info.escuta || '?') + ' | fala: ' + (info.fala || '?');
+      var d = new Date();
+      var hh = ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
+      // Silêncio repetido não empurra os passos importantes para fora da lista.
+      var last = diagHist[diagHist.length - 1];
+      if (last && last.indexOf('no-speech') >= 0 && msg.indexOf('no-speech') >= 0) diagHist.pop();
+      diagHist.push(hh + ' ' + msg);
+      while (diagHist.length > 7) diagHist.shift();
+      diagEl.textContent = '[voz ' + (info.version || '') + '] escuta: ' + (info.escuta || '?') + ' | fala: ' + (info.fala || '?') + '\n' + diagHist.join('\n');
       diagEl.style.display = 'block';
       clearTimeout(diagT);
-      diagT = setTimeout(function () { diagEl.style.display = 'none'; }, 6000);
+      diagT = setTimeout(function () { diagEl.style.display = 'none'; }, 20000);
     } catch (e) { /* ignora */ }
   };
 
@@ -85,6 +92,7 @@
     var u = utts[id];
     if (!u) return;
     if (type === 'start') {
+      N.diag('Bolt começou a falar');
       synth.speaking = true; synth.pending = false;
       fire(u, 'start', { utterance: u });
       return;
@@ -321,6 +329,15 @@
       lastId = m.id;
       if (m.role === 'assistant' && m.text) A.assistantMessage(String(m.text));
     });
+    try {
+      a.voice.on('wake', function (w) { N.diag('nome reconhecido; pedido: "' + ((w && w.command) || '') + '"'); });
+      a.voice.on('result', function (r) { if (r && r.final) N.diag('painel recebeu: "' + (r.text || '') + '"'); });
+      a.voice.on('error', function (e) { N.diag('painel: erro de voz ' + JSON.stringify(e || '')); });
+      a.assistant.on('messages', function (list) {
+        var m = list && list[list.length - 1];
+        if (m && m.role === 'assistant') N.diag('Bolt respondeu: "' + String(m.text || '').slice(0, 60) + '"');
+      });
+    } catch (e) { /* ignora */ }
     a.alerts.on('raised', function (al) {
       if (al) A.alertRaised(String(al.level || ''), String(al.title || ''), String(al.message || ''));
     });

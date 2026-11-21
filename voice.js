@@ -24,7 +24,12 @@ export function extractAfterWake(transcript, wakeName) {
   if (!w) return null;
   let at = -1;
   let len = 0;
-  for (const a of [w, ...(WAKE_ALIASES[w] || [])]) {
+  // Nome com mais de uma palavra ("JEEP Bolt"): a última palavra sozinha ("Bolt") também chama.
+  const parts = w.split(' ').filter(Boolean);
+  const short = parts.length > 1 && parts[parts.length - 1].length >= 3 ? parts[parts.length - 1] : null;
+  const names = [w, ...(WAKE_ALIASES[w] || [])];
+  if (short) names.push(short, ...(WAKE_ALIASES[short] || []));
+  for (const a of names) {
     const i = t.indexOf(` ${a} `);
     if (i >= 0 && (at < 0 || i < at)) { at = i; len = a.length; }
   }
@@ -248,6 +253,11 @@ export class VoiceService extends Emitter {
             continue;
           }
           clearTimeout(this.wakeTimer);
+          // A frase que já gerou o "Pode falar" (só o nome) não vale como pergunta.
+          if (this.earlyWake) {
+            const c0 = extractAfterWake(text, wake);
+            if (c0 !== null && isBareWake(c0)) { this.earlyWake = false; continue; }
+          }
           if (Date.now() < this.armedUntil && String(text).trim()) {
             this.armedUntil = 0;
             this.earlyWake = false;

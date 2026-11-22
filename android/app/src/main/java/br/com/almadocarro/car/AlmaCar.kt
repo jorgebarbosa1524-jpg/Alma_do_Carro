@@ -101,6 +101,12 @@ class DashboardScreen(carContext: CarContext) : Screen(carContext), SurfaceCallb
                     .setOnClickListener { Alma.web.eval("window.__almaNative&&__almaNative.command('standby')") }
                     .build()
             )
+            .addAction(
+                Action.Builder()
+                    .setIcon(icon(R.drawable.ic_gear))
+                    .setOnClickListener { Alma.web.eval("window.__almaNative&&__almaNative.command('settings')") }
+                    .build()
+            )
             .build()
         val b = NavigationTemplate.Builder()
             .setActionStrip(strip)
@@ -114,8 +120,15 @@ class DashboardScreen(carContext: CarContext) : Screen(carContext), SurfaceCallb
 
     /* ---------- a tela da multimídia vira a tela do painel ---------- */
 
+    private var openedFace = false
+
     override fun onSurfaceAvailable(surfaceContainer: SurfaceContainer) {
         Alma.web.setCarSurface(surfaceContainer.surface, surfaceContainer.width, surfaceContainer.height, surfaceContainer.dpi)
+        // Ao abrir na multimídia: tela do Bolt em tela cheia (leve). Painel e configurações pelos botões.
+        if (!openedFace) {
+            openedFace = true
+            Alma.main.postDelayed({ Alma.web.eval("window.__almaNative&&__almaNative.command('face')") }, 1200)
+        }
     }
 
     override fun onSurfaceDestroyed(surfaceContainer: SurfaceContainer) {

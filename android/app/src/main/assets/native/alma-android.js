@@ -308,6 +308,12 @@
         else { v.stopListening(); setTimeout(function () { v.startListening({ mode: 'tap' }); }, 150); }
       } else if (name === 'standby' && app.standby) {
         app.standby.toggle();
+      } else if (name === 'face' && app.standby) {
+        // Multimídia: abre direto na tela do Bolt (a mais leve).
+        if (!app.standby.active) app.standby.enter();
+      } else if (name === 'settings') {
+        if (app.standby && app.standby.active) app.standby.exit();
+        if (app.navigate) app.navigate('settings');
       }
     } catch (e) { console.error(e); }
   };

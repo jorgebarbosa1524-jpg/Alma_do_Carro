@@ -90,6 +90,9 @@ class JsBridge {
         .toString()
 
     @JavascriptInterface
+    fun obdLast(mode: String): String = Alma.obd.last(mode)
+
+    @JavascriptInterface
     fun obdList(cb: String, mode: String) = run(cb) { Alma.obd.list(mode).toString() }
 
     @JavascriptInterface

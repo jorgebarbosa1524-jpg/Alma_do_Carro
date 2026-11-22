@@ -164,7 +164,10 @@ class ObdBridge(private val ctx: Context) {
         prefs.edit().putString("last_$mode", address).apply()
     }
 
-    fun write(text: String) {
+    /** Último adaptador que conectou neste modo (para reconectar sozinho ao abrir o app). */
+    fun last(mode: String): String = prefs.getString("last_$mode", "") ?: ""
+
+        fun write(text: String) {
         (conn ?: throw IllegalStateException("Adaptador não conectado.")).write(text)
     }
 
@@ -222,14 +225,23 @@ class ObdBridge(private val ctx: Context) {
                 { dev.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType).invoke(dev, 1) as BluetoothSocket },
             )
             var last: Throwable? = null
-            for (make in attempts) {
-                try {
-                    val s = make()
-                    s.connect()
-                    return s
-                } catch (e: Throwable) {
-                    last = e
+            // Duas rodadas; cada tentativa que falha é fechada (um socket esquecido aberto
+            // bloqueia as próximas tentativas no mesmo adaptador).
+            for (round in 0 until 2) {
+                for (make in attempts) {
+                    var s: BluetoothSocket? = null
+                    try {
+                        s = make()
+                        s.connect()
+                        return s
+                    } catch (e: Throwable) {
+                        last = e
+                        try { s?.close() } catch (_: Throwable) { }
+                        try { Thread.sleep(350) } catch (_: Throwable) { }
+                    }
                 }
+                try { adapter?.cancelDiscovery() } catch (_: Throwable) { }
+                try { Thread.sleep(800) } catch (_: Throwable) { }
             }
             throw IllegalStateException("Não conectou ao adaptador Bluetooth (${last?.message ?: "sem resposta"}). Confira se ele está ligado na tomada OBD e com a ignição ligada.")
         }

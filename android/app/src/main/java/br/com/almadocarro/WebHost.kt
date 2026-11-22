@@ -158,6 +158,15 @@ class WebHost(private val app: Application) {
         route()
     }
 
+    /**
+     * A multimídia informa uma densidade alta para o tamanho da tela, e o painel ficava enorme
+     * (escondendo menus e configurações). Desenha o painel com pelo menos ~1100 px de largura.
+     */
+    private fun carDpi(width: Int, dpi: Int): Int {
+        val fit = (width * 160f / 1100f).toInt()
+        return minOf(dpi.coerceAtLeast(80), fit).coerceIn(80, 480)
+    }
+
     fun setCarSurface(surface: Surface?, width: Int, height: Int, dpi: Int) {
         if (surface == null || width <= 0 || height <= 0) {
             carSurface = null
@@ -168,7 +177,7 @@ class WebHost(private val app: Application) {
             return
         }
         if (carTarget != null && carSurface === surface) {
-            carTarget?.resize(width, height, dpi)
+            carTarget?.resize(width, height, carDpi(width, dpi))
             return
         }
         val old = carTarget
@@ -176,7 +185,7 @@ class WebHost(private val app: Application) {
         old?.let { route(); it.release() }
         carSurface = surface
         try {
-            carTarget = DisplayTarget("car", surface, width, height, dpi, null)
+            carTarget = DisplayTarget("car", surface, width, height, carDpi(width, dpi), null)
             carStable?.let { applyCarInsets(it) }
         } catch (e: Throwable) {
             Log.e(Alma.TAG, "Não foi possível abrir o painel na tela do carro", e)
@@ -235,6 +244,7 @@ class WebHost(private val app: Application) {
             (webView.parent as? ViewGroup)?.removeView(webView)
             return
         }
+        Alma.keepPhoneScreenOn?.invoke(target === activityContainer)
         if (webView.parent !== target) {
             (webView.parent as? ViewGroup)?.removeView(webView)
             ctx.setBaseContext(target.context)

@@ -30,6 +30,8 @@ object Alma {
     val obd by lazy { ObdBridge(app) }
     val web by lazy { WebHost(app) }
 
+    /** A Activity registra como ligar/desligar "manter tela acesa". */
+    var keepPhoneScreenOn: ((Boolean) -> Unit)? = null
     @Volatile var activityVisible = false
     @Volatile var carVisible = false
     @Volatile var carConnected = false

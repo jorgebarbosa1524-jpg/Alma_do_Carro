@@ -81,8 +81,9 @@ class FocusManager(ctx: Context) {
         current = null
         currentGain = 0
         if (want == 0) return
+        // Canal de mídia: no Android Auto o canal de "navegação" tem qualidade baixa (voz fina).
         val usage = if (want == AudioManager.AUDIOFOCUS_GAIN_TRANSIENT) AudioAttributes.USAGE_ASSISTANT
-        else AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE
+        else AudioAttributes.USAGE_MEDIA
         val req = AudioFocusRequest.Builder(want)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -162,7 +163,7 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
         }
         tts.setAudioAttributes(
             AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                 .build()
         )

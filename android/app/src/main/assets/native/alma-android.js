@@ -29,7 +29,10 @@
 
   /* ============ DIAGNÓSTICO DE VOZ (linha discreta no rodapé, some sozinha) ============ */
   var diagEl = null, diagT = null, diagHist = [];
+  // Desligado: a linha de diagnóstico cobria a tela da multimídia. Para religar (só para testes):
+  // no console do WebView, window.__almaDiagOn = true.
   N.diag = function (msg) {
+    if (!window.__almaDiagOn) return;
     try {
       if (!document.body) return;
       if (!diagEl) {
@@ -342,5 +345,25 @@
       if (al) A.alertRaised(String(al.level || ''), String(al.title || ''), String(al.message || ''));
     });
     A.webReady();
+    autoConnectObd(a);
   }, 250);
+
+  /* Conecta sozinho no último adaptador OBD2 que funcionou (Bluetooth clássico ou ponte nativa). */
+  function autoConnectObd(a) {
+    if (!a.obd || !A.obdLast) return;
+    var tries = 0;
+    function attempt() {
+      var st = (a.obd.status && a.obd.status.state) || a.obd.state;
+      if (st && st !== 'idle' && st !== 'error') return; // já conectado ou conectando
+      var spp = A.obdLast('spp'), ble = A.obdLast('ble');
+      var kind = spp ? 'spp' : ble ? 'native' : null;
+      var address = spp || ble;
+      if (!kind) return;
+      tries++;
+      a.obd.connect(kind, { address: address }).catch(function () {
+        if (tries < 12) setTimeout(attempt, 30000);
+      });
+    }
+    setTimeout(attempt, 2500);
+  }
 })();

@@ -10,7 +10,7 @@ val webAssetsOut = layout.buildDirectory.dir("generated/webassets")
 
 val copyWebApp by tasks.registering(Copy::class) {
     from(webRoot) {
-        include("*.html", "*.js", "*.css", "*.svg", "*.png", "*.json", "*.webmanifest")
+        include("*.html", "*.js", "*.css", "*.svg", "*.png", "*.webp", "*.json", "*.webmanifest")
         exclude("bundle.mjs", "server.js", "tests-*.mjs", "package.json", "package-lock.json")
     }
     into(webAssetsOut.map { it.dir("www") })
@@ -24,8 +24,8 @@ android {
         applicationId = "br.com.almadocarro"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14
-        versionName = "1.3.0"
+        versionCode = 15
+        versionName = "1.3.1"
     }
 
     signingConfigs {

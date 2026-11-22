@@ -20,11 +20,7 @@ export const BOLT_VEHICLE_IMAGES = {
   renegade: {
     name: 'Jeep Renegade',
     colors: {
-      prata: 'renegade_prata.png',
-      branco: 'renegade_branco.png',
-      preto: 'renegade_preto.png',
-      vermelho: 'renegade_vermelho.png',
-      azul: 'renegade_azul.png',
+      prata: 'renegade_prata.webp',
     },
   },
   civic2010: {
@@ -40,11 +36,7 @@ export const BOLT_VEHICLE_IMAGES = {
   ecosport2006: {
     name: 'Ford EcoSport 2006',
     colors: {
-      prata: 'ecosport2006_prata.png',
-      branco: 'ecosport2006_branco.png',
-      preto: 'ecosport2006_preto.png',
-      vermelho: 'ecosport2006_vermelho.png',
-      azul: 'ecosport2006_azul.png',
+      prata: 'ecosport2006_prata.webp',
     },
   },
   jetta: {

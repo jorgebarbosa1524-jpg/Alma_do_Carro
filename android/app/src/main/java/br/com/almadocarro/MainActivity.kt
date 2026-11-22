@@ -41,7 +41,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // A tela do celular só fica acesa quando o painel está nela (no carro ela pode apagar: menos calor).
+        Alma.keepPhoneScreenOn = { on ->
+            if (on) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
 
         val root = FrameLayout(this)
         root.setBackgroundColor(0xFF070B11.toInt())

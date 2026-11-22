@@ -25,21 +25,26 @@ jobs:
 
       - name: Gerar APK
         run: echo "sdk=$ANDROID_HOME" && yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
       - name: Compilar
         run: gradle -p android assembleRelease --no-daemon
 
       - name: Renomear
-        run: cp android/app/build/outputs/apk/release/app-release.apk AlmaDoCarro.apk
+        run: |
+          cp android/app/build/outputs/apk/renegade/release/app-renegade-release.apk AlmaDoCarro.apk
+          cp android/app/build/outputs/apk/ecosport/release/app-ecosport-release.apk AlmaDaEcoSport.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: AlmaDoCarro-apk
-          path: AlmaDoCarro.apk
+          name: AlmaDoCarro-apks
+          path: |
+            AlmaDoCarro.apk
+            AlmaDaEcoSport.apk
 
       - name: Publicar link de download
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete apk-estavel --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
-          gh release create apk-estavel AlmaDoCarro.apk -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "Alma do Carro - versão estável" --notes "Toque em AlmaDoCarro.apk para baixar e instalar." --latest=false
+          gh release create apk-estavel AlmaDoCarro.apk AlmaDaEcoSport.apk -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Alma do Carro - versão estável" --notes "AlmaDoCarro.apk = Jeep Renegade (Jorge). AlmaDaEcoSport.apk = EcoSport 2006 (Jean)." --latest=false

@@ -52,13 +52,14 @@ async function boot() {
   await settings.load();
 
   const engine = new VehicleDataEngine();
-  const obd = new ObdManager({ settings });
+  const profile = factoryProfile(window);
+  const obd = new ObdManager({ settings, sessionOptions: obdSessionOptions(profile) });
   const sim = new VehicleSimulator();
   const ds = new DataSourceController({ engine, obd, sim });
   const connectivity = new Connectivity(window);
   const garage = new Garage({ db });
   await garage.load();
-  await seedGarage(db, garage);
+  await seedGarage(db, garage, settings, profile);
   const geo = GeoTracker.isSupported(window) ? new GeoTracker(window) : null;
   const getSetting = (p, d) => settings.get(p, d);
   const getVehicle = () => garage.active();
@@ -337,15 +338,27 @@ async function boot() {
 }
 
 import { ACCENTS as APP_ACCENTS } from './config.js';
+import { factoryProfile, obdSessionOptions } from './vehicle-profile.js';
 
-/** Primeira abertura: o Jeep Renegade 2016 já vem cadastrado (uma vez só; se for excluído, não volta). */
-async function seedGarage(db, garage) {
+/**
+ * Primeira abertura: cadastra o veículo inicial (uma vez só; se for excluído, não volta).
+ * Sem perfil de fábrica: o Jeep Renegade 2016. Com perfil (app Android de outro carro): o carro do perfil,
+ * e também o nome do motorista e do assistente.
+ */
+async function seedGarage(db, garage, settings, profile = null) {
+  const key = profile ? `seed.${profile.id}` : 'seed.renegade';
   try {
-    if (await db.get('kv', 'seed.renegade')) return;
-    if (!garage.list({ includeArchived: true }).length) {
+    if (await db.get('kv', key)) return;
+    if (profile) {
+      const existing = garage.list({ includeArchived: true }).find((v) => v.tech?.make === profile.vehicle.tech?.make && v.tech?.model === profile.vehicle.tech?.model && Number(v.tech?.year) === Number(profile.vehicle.tech?.year));
+      const v = existing || (await garage.save(profile.vehicle));
+      await garage.setActive(v.id);
+      if (profile.driverName) settings.set('driver.name', profile.driverName);
+      if (profile.assistantName) settings.set('assistant.name', profile.assistantName);
+    } else if (!garage.list({ includeArchived: true }).length) {
       await garage.save({ nickname: 'Renegade', tech: { make: 'Jeep', model: 'Renegade', year: 2016, fuelType: 'flex', aspiration: 'natural' }, appearance: { silhouette: 'suv', color: '#2EE6D6' } });
     }
-    await db.put('kv', { key: 'seed.renegade', value: true });
+    await db.put('kv', { key, value: true });
   } catch (err) {
     console.warn('Não foi possível cadastrar o veículo inicial', err);
   }

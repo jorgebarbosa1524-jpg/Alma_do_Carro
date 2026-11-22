@@ -16,6 +16,19 @@ painel não aparecia. A pasta `android/` é esse app: ele roda **o mesmo projeto
 - OBD2 pelo próprio app: "Bluetooth clássico" (ELM327 pareado) e "Ponte nativa" (ELM327 BLE ou Wi-Fi
   192.168.0.10:35000).
 
+## Versões por carro
+
+O mesmo projeto gera um app para cada carro (o painel é o mesmo; muda só o cadastro inicial):
+
+- **AlmaDoCarro.apk** – "Alma do Carro", Jeep Renegade 2016 (Jorge).
+- **AlmaDaEcoSport.apk** – "Alma da EcoSport", Ford EcoSport 2006 1.6 8V Zetec RoCam Flex, manual (Jean).
+  Já vem com o carro cadastrado (faixa vermelha 6000 rpm, tanque de 45 L) e o adaptador OBD tenta
+  primeiro o protocolo J1850 PWM, usado pelos Ford da época. Alguns ELM327 baratos (os "v2.1")
+  não têm esse protocolo: se não conectar, use um ELM327 **v1.5** ou um OBDLink/Vgate.
+
+Para outro carro: copie `android/app/src/ecosport/` com outro nome, ajuste `assets/native/profile.js`
+e crie a versão em `productFlavors` no `android/app/build.gradle.kts`.
+
 ## 1. Gerar o APK
 
 **Opção A, sem instalar nada (GitHub):** envie a pasta do projeto inteira (com `android/` e `.github/`)

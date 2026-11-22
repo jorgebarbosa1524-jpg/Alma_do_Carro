@@ -24,8 +24,8 @@ android {
         applicationId = "br.com.almadocarro"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "1.3.2"
+        versionCode = 17
+        versionName = "1.4.0"
     }
 
     signingConfigs {
@@ -34,6 +34,20 @@ android {
             storePassword = "almadocarro"
             keyAlias = "alma"
             keyPassword = "almadocarro"
+        }
+    }
+
+    // Uma versão do app por carro. Mesmo painel; muda só o perfil de fábrica (assets/native/profile.js).
+    flavorDimensions += "carro"
+    productFlavors {
+        create("renegade") {
+            dimension = "carro"
+            resValue("string", "app_name", "Alma do Carro")
+        }
+        create("ecosport") {
+            dimension = "carro"
+            applicationIdSuffix = ".ecosport"
+            resValue("string", "app_name", "Alma da EcoSport")
         }
     }
 

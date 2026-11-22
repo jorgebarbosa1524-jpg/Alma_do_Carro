@@ -73,7 +73,9 @@ class FocusManager(ctx: Context) {
         holds.entries.removeAll { it.value <= now }
         val want = when {
             holds.isEmpty() -> 0
-            holds.containsKey(LISTEN) -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+            // Ouvindo ou falando: só ABAIXA a música (nunca pausa). No Android Auto, pedir foco
+            // exclusivo ou usar o canal de mídia/assistente parava o Spotify e podia tomar o microfone.
+            holds.containsKey(LISTEN) -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
             else -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
         }
         if (want == currentGain) return
@@ -82,8 +84,8 @@ class FocusManager(ctx: Context) {
         currentGain = 0
         if (want == 0) return
         // Canal de mídia: no Android Auto o canal de "navegação" tem qualidade baixa (voz fina).
-        val usage = if (want == AudioManager.AUDIOFOCUS_GAIN_TRANSIENT) AudioAttributes.USAGE_ASSISTANT
-        else AudioAttributes.USAGE_MEDIA
+        // Canal de orientação (o mesmo do Waze): o Android Auto abaixa a música por cima, sem parar.
+        val usage = AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE
         val req = AudioFocusRequest.Builder(want)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -163,7 +165,7 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
         }
         tts.setAudioAttributes(
             AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                 .build()
         )

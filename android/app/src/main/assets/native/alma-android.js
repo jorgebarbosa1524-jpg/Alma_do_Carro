@@ -359,7 +359,30 @@
     });
     A.webReady();
     autoConnectObd(a);
+    watchObdStall(a);
   }, 250);
+
+  /* Vigia do OBD2: "conectado" mas 20 s sem nenhum dado = conexão presa. Reconecta sozinho. */
+  function watchObdStall(a) {
+    var readySince = 0;
+    setInterval(function () {
+      try {
+        var st = a.obd.status || {};
+        if (st.state !== 'ready') { readySince = 0; return; }
+        if (!readySince) readySince = Date.now();
+        if (a.assistant && a.assistant.busy) return; // checagem em andamento: as leituras param mesmo
+        var last = st.lastDataTs || readySince;
+        if (Date.now() - last < 20000) return;
+        readySince = 0;
+        var kind = st.kind || 'spp';
+        var spp = A.obdLast && A.obdLast('spp'), ble = A.obdLast && A.obdLast('ble');
+        var address = kind === 'spp' ? spp : ble;
+        a.obd.disconnect().catch(function () {}).then(function () {
+          setTimeout(function () { a.obd.connect(kind, address ? { address: address } : {}).catch(function () {}); }, 1500);
+        });
+      } catch (e) { /* ignora */ }
+    }, 5000);
+  }
 
   /* Conecta sozinho no último adaptador OBD2 que funcionou (Bluetooth clássico ou ponte nativa). */
   function autoConnectObd(a) {

@@ -37,21 +37,95 @@ export function mascotSvgString() {
 </svg>`;
 }
 
-/**
- * Cria o elemento do mascote. Retorna o <span> com método setState().
- * @param {{size?:number,state?:string}} opts
+/* ---------------------------------------------------------------- estilo do rosto
+ * 'robo'  = os olhos angulares originais.
+ * 'carro' = "carro falante": a foto do próprio carro, com os faróis acendendo e piscando como olhos
+ *           e a entrada de ar do para-choque abrindo como boca enquanto o assistente fala.
  */
-export function createMascot({ size = 44, state = 'normal' } = {}) {
+let avatar = { style: 'robo', file: null, face: null };
+let emotion = 'neutro';
+
+/** Emoção mostrada em todos os mascotes: neutro | alegre | triste | bravo. */
+export function setMascotEmotion(e) {
+  emotion = ['alegre', 'triste', 'bravo'].includes(e) ? e : 'neutro';
+  for (const w of [...live]) {
+    if (w._seen && !w.isConnected) { live.delete(w); continue; }
+    w.dataset.emotion = emotion;
+  }
+}
+const live = new Set();
+
+/** Troca o rosto de todos os mascotes na tela. */
+export function setMascotAvatar(next = {}) {
+  avatar = { ...avatar, ...next };
+  for (const w of [...live]) {
+    if (w._seen && !w.isConnected) { live.delete(w); continue; }
+    renderFace(w);
+  }
+}
+
+function useCar(wrap) {
+  return avatar.style === 'carro' && !!avatar.file && !!avatar.face && !wrap._carFailed && Number(wrap.dataset.size) >= 40;
+}
+
+function place(el, r) {
+  el.style.left = `${r.x - r.w / 2}%`;
+  el.style.top = `${r.y - r.h / 2}%`;
+  el.style.width = `${r.w}%`;
+  el.style.height = `${r.h}%`;
+}
+
+function renderFace(wrap) {
+  if (wrap.isConnected) wrap._seen = true;
+  const car = useCar(wrap);
+  wrap.classList.toggle('is-car', car);
+  wrap.replaceChildren();
+  if (car) {
+    const body = document.createElement('span');
+    body.className = 'cm-body';
+    const img = document.createElement('img');
+    img.className = 'cm-img';
+    img.alt = '';
+    img.draggable = false;
+    img.decoding = 'async';
+    img.onerror = () => { wrap._carFailed = true; renderFace(wrap); };
+    img.src = avatar.file;
+    body.appendChild(img);
+    avatar.face.eyes.forEach((e, i) => {
+      const eye = document.createElement('i');
+      eye.className = `cm-eye cm-eye-${i}`;
+      place(eye, e);
+      body.appendChild(eye);
+    });
+    const mouth = document.createElement('i');
+    mouth.className = 'cm-mouth';
+    place(mouth, avatar.face.mouth);
+    mouth.appendChild(document.createElement('b'));
+    body.appendChild(mouth);
+    wrap.appendChild(body);
+    return;
+  }
   const NS = 'http://www.w3.org/2000/svg';
-  const wrap = document.createElement('span');
-  wrap.className = 'bolt-mascot';
-  wrap.style.setProperty('--ms', `${size}px`);
   const svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('viewBox', '0 0 64 56');
   svg.setAttribute('aria-hidden', 'true');
   const doc = new DOMParser().parseFromString(`<svg xmlns="${NS}">${mascotInner()}</svg>`, 'image/svg+xml');
   for (const n of [...doc.documentElement.childNodes]) svg.appendChild(document.importNode(n, true));
   wrap.appendChild(svg);
+}
+
+/**
+ * Cria o elemento do mascote. Retorna o <span> com método setState().
+ * @param {{size?:number,state?:string}} opts
+ */
+export function createMascot({ size = 44, state = 'normal' } = {}) {
+  const wrap = document.createElement('span');
+  wrap.className = 'bolt-mascot';
+  wrap.style.setProperty('--ms', `${size}px`);
+  wrap.dataset.size = String(size);
+  wrap.dataset.emotion = emotion;
+  live.add(wrap);
+  renderFace(wrap);
   wrap.setState = (s) => {
     const next = MASCOT_STATES.includes(s) ? s : 'normal';
     wrap.dataset.state = next;

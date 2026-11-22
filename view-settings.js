@@ -78,6 +78,7 @@ export function mountSettings(root, ctx) {
       field('Nome do assistente', input({ value: s.get('assistant.name'), maxlength: 20, on: { change: (e) => s.set('assistant.name', e.target.value.trim() || 'Bolt') } }), { hint: 'Também é a palavra de ativação por voz.' }),
       row('Personalidade', PERSONALITIES[s.get('assistant.personality')]?.hint, segmented(Object.entries(PERSONALITIES).map(([k, v]) => [k, v.label]), s.get('assistant.personality'), (v) => { s.set('assistant.personality', v); render(); })),
       row('Nível de comunicação', LEVELS[s.get('assistant.level')]?.hint, segmented(Object.entries(LEVELS).map(([k, v]) => [k, v.label]), s.get('assistant.level'), (v) => { s.set('assistant.level', v); render(); })),
+      row('Rosto do assistente', 'Carro falante: a foto do seu carro ganha vida (faróis viram olhos, o para-choque vira boca). Robozinho: os olhos originais.', segmented([['carro', 'Carro falante'], ['robo', 'Robozinho']], s.get('assistant.avatar') || 'carro', (v) => s.set('assistant.avatar', v))),
       row('Comentar sozinho o que acontece', 'Partida, motor frio, calor, bateria, rotação, velocidade, combustível, freada forte e pausas (personalidades Imponente e Debochado).', toggle(s.get('assistant.autoComment'), set('assistant.autoComment'))),
       row('Voz do assistente', voice.ttsSupported ? 'Respostas faladas.' : 'Síntese de voz indisponível neste navegador.', toggle(s.get('assistant.voiceEnabled'), set('assistant.voiceEnabled'))),
       voice.ttsSupported ? h('div', { class: 'form-grid' },

@@ -137,6 +137,36 @@ export function imageFile(catalogId, color) {
   return BOLT_VEHICLE_IMAGES[catalogId]?.colors?.[color] || null;
 }
 
+/**
+ * "Carro falante": onde ficam os faróis (olhos) e a entrada de ar do para-choque (boca) em cada
+ * foto do catálogo, em % da largura/altura da imagem (x/y = centro).
+ */
+export const BOLT_CAR_FACES = {
+  renegade: {
+    eyes: [
+      { x: 64.0, y: 48.1, w: 6.4, h: 9.4 },
+      { x: 91.5, y: 48.1, w: 3.2, h: 9.0 },
+    ],
+    mouth: { x: 81.9, y: 70.6, w: 17.5, h: 7.2 },
+  },
+  ecosport2006: {
+    eyes: [
+      { x: 67.5, y: 52.7, w: 7.8, h: 7.6 },
+      { x: 92.9, y: 52.0, w: 2.6, h: 7.0 },
+    ],
+    mouth: { x: 86.5, y: 72.0, w: 17, h: 6.5 },
+  },
+};
+
+/** Foto do catálogo + rosto para o mascote "carro falante" (ou null se o carro não tiver rosto). */
+export function carFaceFor(vehicle, override = null) {
+  const id = catalogIdFor(vehicle);
+  const face = id ? BOLT_CAR_FACES[id] : null;
+  if (!face) return null;
+  const file = imageFile(id, resolveColor(id, { override, appearanceColor: vehicle?.appearance?.color }));
+  return file ? { file, face } : null;
+}
+
 /** Resolve tudo que o cockpit precisa para exibir o veículo. */
 export function resolveVehicleVisual(vehicle, override = null) {
   // a foto enviada pelo dono do carro tem prioridade sobre o catálogo

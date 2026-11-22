@@ -404,6 +404,68 @@ select.input { appearance: none; padding-right: 30px; background-image: linear-g
 @keyframes m-speak { from { transform: scaleY(.25); } to { transform: scaleY(1); } }
 @media (prefers-reduced-motion: reduce) { .bolt-mascot .m-eye, .bolt-mascot .m-bar { animation: none !important; } }
 
+/* carro falante: a foto do carro; faróis = olhos, entrada de ar = boca */
+.bolt-mascot.is-car { width: calc(var(--ms, 44px) * 1.5); height: var(--ms, 44px); }
+.bolt-mascot.is-car .cm-body { position: relative; display: block; width: 100%; height: 100%; transform-origin: 72% 92%; transition: transform .35s ease, filter .4s; }
+.bolt-mascot.is-car .cm-img { display: block; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 calc(var(--ms, 44px) * .05) calc(var(--ms, 44px) * .08) rgba(0, 0, 0, .5)); transition: filter .4s; user-select: none; -webkit-user-drag: none; }
+.bolt-mascot.is-car .cm-eye { position: absolute; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, #fff 0 16%, color-mix(in srgb, var(--mc-eye) 85%, #fff) 30%, color-mix(in srgb, var(--mc-eye) 55%, transparent) 50%, transparent 72%); mix-blend-mode: screen; opacity: .8; transform: scale(1.55); transform-origin: center; animation: cm-blink 5.8s infinite, m-breathe 3.4s ease-in-out infinite; transition: opacity .3s; }
+.bolt-mascot.is-car .cm-eye-1 { animation-delay: .04s, .2s; }
+.bolt-mascot.is-car .cm-mouth { position: absolute; pointer-events: none; }
+.bolt-mascot.is-car .cm-mouth b { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(ellipse at center, #fff 0 10%, var(--mc-eye) 38%, color-mix(in srgb, var(--mc-eye) 40%, transparent) 60%, transparent 76%); mix-blend-mode: screen; opacity: .35; transform: scale(1.1, .18); transform-origin: center; transition: opacity .25s, transform .25s; }
+.bolt-mascot.is-car[data-state="sleeping"] .cm-img { filter: brightness(.55) saturate(.6) drop-shadow(0 4px 8px rgba(0, 0, 0, .5)); }
+.bolt-mascot.is-car[data-state="sleeping"] .cm-eye { opacity: .08; animation: none; }
+.bolt-mascot.is-car[data-state="sleeping"] .cm-mouth b { opacity: 0; }
+.bolt-mascot.is-car[data-state="listening"] .cm-body { transform: translateY(-1.5%) rotate(-1.2deg); }
+.bolt-mascot.is-car[data-state="listening"] .cm-eye { opacity: 1; animation: cm-blink 4s infinite; transform: scale(1.75); }
+.bolt-mascot.is-car[data-state="listening"] .cm-mouth b { opacity: .6; transform: scale(1.1, .3); }
+.bolt-mascot.is-car[data-state="thinking"] .cm-body { animation: cm-sway 1.6s ease-in-out infinite; }
+.bolt-mascot.is-car[data-state="thinking"] .cm-eye { animation: m-think 1.2s ease-in-out infinite; }
+.bolt-mascot.is-car[data-state="thinking"] .cm-eye-1 { animation-delay: .15s; }
+.bolt-mascot.is-car[data-state="speaking"] .cm-body { animation: cm-bob .34s ease-in-out infinite alternate; }
+.bolt-mascot.is-car[data-state="speaking"] .cm-eye { opacity: 1; animation: cm-glow .38s ease-in-out infinite alternate; }
+.bolt-mascot.is-car[data-state="speaking"] .cm-mouth b { opacity: 1; animation: cm-talk .62s linear infinite; }
+.bolt-mascot.is-car[data-state="attention"] .cm-eye { opacity: 1; }
+.bolt-mascot.is-car[data-state="alert"] .cm-body { animation: cm-shake .5s ease-in-out infinite; }
+.bolt-mascot.is-car[data-state="alert"] .cm-eye { opacity: 1; animation: cm-glow .3s ease-in-out infinite alternate; }
+.bolt-mascot.is-car.is-off .cm-body, .bolt-mascot.is-car.is-off .cm-eye, .bolt-mascot.is-car.is-off .cm-mouth b { animation: none; }
+@keyframes cm-blink { 0%, 93%, 100% { transform: scale(1.55, 1.55); } 95.5% { transform: scale(1.55, .12); } }
+@keyframes cm-glow { from { opacity: .75; transform: scale(1.5); } to { opacity: 1; transform: scale(1.85); } }
+@keyframes cm-talk { 0% { transform: scale(1.05, .25); } 14% { transform: scale(1.15, .95); } 28% { transform: scale(1.1, .45); } 42% { transform: scale(1.2, 1.1); } 58% { transform: scale(1.05, .3); } 72% { transform: scale(1.15, .8); } 86% { transform: scale(1.1, .4); } 100% { transform: scale(1.05, .25); } }
+@keyframes cm-bob { from { transform: translateY(0) rotate(0deg); } to { transform: translateY(-2.2%) rotate(-.9deg); } }
+@keyframes cm-sway { 0%, 100% { transform: rotate(-.8deg); } 50% { transform: rotate(.8deg); } }
+@keyframes cm-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-1.2%); } 75% { transform: translateX(1.2%); } }
+
+/* emoções (robozinho e carro falante): alegre, triste, bravo */
+.bolt-mascot .m-eye { transition: transform .45s ease, opacity .3s; }
+.bolt-mascot[data-emotion="alegre"] .m-eye { transform: translateY(-6%) scaleY(.62); opacity: 1; }
+.bolt-mascot[data-emotion="triste"] { --mc-eye: #6F9BFF; }
+.bolt-mascot[data-emotion="triste"] .m-eye-l { transform: translateY(16%) rotate(-27deg) scaleY(.75); }
+.bolt-mascot[data-emotion="triste"] .m-eye-r { transform: translateY(16%) rotate(27deg) scaleY(.75); }
+.bolt-mascot[data-emotion="triste"] .m-eye { opacity: .55; }
+.bolt-mascot[data-emotion="bravo"] { --mc-eye: var(--crit); }
+.bolt-mascot[data-emotion="bravo"] .m-eye-l { transform: rotate(14deg) scaleY(.7); }
+.bolt-mascot[data-emotion="bravo"] .m-eye-r { transform: rotate(-14deg) scaleY(.7); }
+.bolt-mascot[data-emotion="bravo"] .m-eye { opacity: 1; }
+.bolt-mascot[data-emotion="bravo"] svg { animation: cm-shake .45s ease-in-out 3; }
+.bolt-mascot[data-emotion="alegre"] svg { animation: cm-hop .9s ease-in-out 2; }
+
+.bolt-mascot.is-car[data-emotion="alegre"] .cm-body { animation: cm-hop .9s ease-in-out infinite; }
+.bolt-mascot.is-car[data-emotion="alegre"] .cm-eye { opacity: 1; animation: m-breathe 1.6s ease-in-out infinite; transform: scale(1.7, .95); }
+.bolt-mascot.is-car[data-emotion="alegre"] .cm-mouth b { opacity: .95; transform: scale(1.3, .62); }
+.bolt-mascot.is-car[data-emotion="triste"] .cm-body { animation: none; transform: translateY(2.5%) rotate(1.8deg); }
+.bolt-mascot.is-car[data-emotion="triste"] .cm-img { filter: brightness(.72) saturate(.35) drop-shadow(0 4px 8px rgba(0, 0, 0, .5)); }
+.bolt-mascot.is-car[data-emotion="triste"] .cm-eye { opacity: .5; animation: none; transform: translateY(18%) scale(1.35, .6); }
+.bolt-mascot.is-car[data-emotion="triste"] .cm-mouth b { opacity: .35; transform: scale(.6, .12); animation: none; }
+.bolt-mascot.is-car[data-emotion="bravo"] .cm-body { animation: cm-shake .32s ease-in-out infinite; }
+.bolt-mascot.is-car[data-emotion="bravo"] .cm-img { filter: drop-shadow(0 0 calc(var(--ms, 44px) * .06) color-mix(in srgb, var(--crit) 70%, transparent)) drop-shadow(0 4px 8px rgba(0, 0, 0, .5)); }
+.bolt-mascot.is-car[data-emotion="bravo"] .cm-eye { opacity: 1; animation: m-talk .25s ease-in-out infinite alternate; transform: scale(1.75, .55); }
+.bolt-mascot.is-car[data-emotion="bravo"] .cm-mouth b { opacity: .9; transform: scale(1.15, .28); }
+/* falando com emoção: a boca continua mexendo */
+.bolt-mascot.is-car[data-state="speaking"][data-emotion] .cm-mouth b { opacity: 1; animation: cm-talk .62s linear infinite; }
+@keyframes cm-hop { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-4%) rotate(-1deg); } 55% { transform: translateY(0); } 70% { transform: translateY(-1.5%); } }
+@media (prefers-reduced-motion: reduce) { .bolt-mascot.is-car .cm-body, .bolt-mascot.is-car .cm-eye, .bolt-mascot.is-car .cm-mouth b { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .bolt-mascot[data-emotion] svg { animation: none !important; } }
+
 /* assistente */
 .assistant-win { position: fixed; z-index: 40; right: calc(14px + var(--sar)); bottom: calc(var(--nav-h) + var(--sab) + 12px); width: min(390px, calc(100vw - 28px)); height: min(560px, calc(100dvh - var(--nav-h) - var(--hd-h) - 40px)); display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 22px; box-shadow: var(--shadow); opacity: 0; transform: translateY(14px) scale(.97); transform-origin: bottom right; transition: opacity .2s, transform .2s, width .2s, height .2s, right .2s, bottom .2s, border-radius .2s; overflow: hidden; }
 .assistant-win.in { opacity: 1; transform: none; }

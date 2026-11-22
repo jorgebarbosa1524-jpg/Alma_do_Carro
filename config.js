@@ -76,6 +76,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
     volume: 1,
     micEnabled: true,
     listenMode: 'continuous',
+    avatar: 'carro',
     autoComment: true,
     announceAlerts: true,
   },

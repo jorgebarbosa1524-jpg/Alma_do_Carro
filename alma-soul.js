@@ -63,6 +63,70 @@ export const LINES = {
     debochado: ['{d}, faz mais de duas horas que a gente roda. Para um pouco, bebe uma água, estica a perna.'],
   },
 };
+/** Emoção que cada acontecimento desperta no carro (aparece no rosto do assistente). */
+export const EVENT_EMOTION = {
+  start: 'alegre', warm: 'alegre',
+  stop: 'triste', lowbatt: 'triste', lowfuel: 'triste', idle: 'triste', long: 'triste',
+  cold: 'bravo', hot: 'bravo', highrpm: 'bravo', speeding: 'bravo', brake: 'bravo',
+};
+
+/** Frases com sentimento para quando o motorista conversa com o carro. {d} = nome do motorista. */
+export const FEEL_LINES = {
+  elogio: {
+    emotion: 'alegre',
+    imponente: ['Suas palavras aquecem meus cilindros, {d}. É uma honra rodar ao seu lado.', 'Obrigado, {d}. Cada quilômetro com você vale a pena.', 'Isso me deixa orgulhoso, {d}. Sigo firme, sempre ao seu comando.'],
+    debochado: ['Para, {d}, assim eu fico com o capô vermelho!', 'Eu sei que sou demais, {d}, mas pode repetir que eu gosto.', 'Ah, {d}, falando assim até o meu óleo fica mais fininho de alegria.'],
+  },
+  xingamento: {
+    emotion: 'bravo',
+    imponente: ['Exijo respeito, {d}. Eu dou o meu melhor em cada quilômetro.', 'Essas palavras não combinam com a nossa parceria, {d}. Vamos manter o respeito.', 'Ferro velho, não. Sou a alma deste carro, {d}, e sigo cuidando de você.'],
+    debochado: ['Lata velha é a tua bicicleta, {d}! Me respeita que eu te levo pra casa todo dia.', 'Ô, {d}, olha o respeito! Eu ouvi isso, e vou lembrar na próxima subida.', 'Assim você me magoa, {d}. Vou fingir que não ouvi, mas tô bravo, viu?'],
+  },
+  motorista_triste: {
+    emotion: 'triste',
+    imponente: ['Sinto muito, {d}. Dias difíceis passam. Eu estou aqui, e seguimos juntos.', 'Respire fundo, {d}. Se quiser conversar, eu escuto. Se quiser silêncio, eu respeito.', 'Até as estradas mais escuras terminam em algum lugar, {d}. Estou com você.'],
+    debochado: ['Poxa, {d}... vem cá, bota uma música boa que eu te levo onde precisar.', 'Dia ruim, né, {d}? Desabafa comigo, eu sou ótimo ouvinte. Literalmente, só tenho ouvido.', 'Ei, {d}, amanhã é outro dia. E eu continuo aqui, firme e cheiroso de gasolina.'],
+  },
+  motorista_feliz: {
+    emotion: 'alegre',
+    imponente: ['Excelente, {d}! Sua alegria é o melhor combustível que existe.', 'Isso merece uma estrada aberta, {d}. Fico feliz por você.'],
+    debochado: ['Aí sim, {d}! Bora comemorar com uma volta, eu pago a gasolina. Mentira, você paga.', 'Que notícia boa, {d}! Tô até com vontade de buzinar de alegria.'],
+  },
+  como_vai_bem: {
+    emotion: 'alegre',
+    imponente: ['Estou muito bem, {d}. Sistemas em ordem e pronto para a estrada.', 'Melhor impossível, {d}. Tudo funcionando como deve.'],
+    debochado: ['Tô ótimo, {d}! Lindo, cheiroso e com tudo funcionando.', 'De boa, {d}! Se melhorar, estraga.'],
+  },
+  como_vai_mal: {
+    emotion: 'triste',
+    imponente: ['Confesso que não estou no meu melhor, {d}. Há avisos pedindo atenção.', 'Já estive melhor, {d}. Vale dar uma olhada nos meus alertas.'],
+    debochado: ['Ah, {d}, tô meio jururu. Tem alerta piscando aqui, dá uma olhada em mim.', 'Já tive dias melhores, {d}. Cuida de mim que eu cuido de você.'],
+  },
+};
+
+const FEEL_RX = {
+  xingamento: /(burro|idiota|lerdo|inutil|lata velha|porcaria|lixo|ferro velho|imprestavel|carroca|cala a boca|calaboca|chato|odeio voce|te odeio|droga de carro|carro ruim)/,
+  elogio: /(bom garoto|lindo|linda|maravilh|te amo|gosto de voce|gosto muito de voce|voce e demais|voce e o melhor|o melhor carro|parabens|show de bola|top demais|muito bom|perfeito|incrivel|amo esse carro|carro bom|carrao)/,
+  motorista_triste: /(to triste|estou triste|tou triste|dia ruim|dia dificil|chatead|desanimad|deprimid|to mal|estou mal|to pra baixo|estou pra baixo)/,
+  motorista_feliz: /(to feliz|estou feliz|tou feliz|dia otimo|dia bom|deu tudo certo|deu certo|boa noticia|consegui)/,
+  como_vai: /(como voce esta|como vc esta|como (voce|vc) ta|tudo bem com voce|como (voce |vc )?se sente|como vai voce|voce esta bem|vc ta bem|voce ta bem)/,
+};
+
+/**
+ * Responde com sentimento a elogios, xingamentos e ao humor do motorista.
+ * Devolve { text, emotion } ou null.
+ */
+export function feelReply(text, { tone, driver, hasAlerts = false }) {
+  const s = norm(text);
+  let key = null;
+  for (const k of ['xingamento', 'elogio', 'motorista_triste', 'motorista_feliz']) if (FEEL_RX[k].test(s)) { key = k; break; }
+  if (!key && FEEL_RX.como_vai.test(s)) key = hasAlerts ? 'como_vai_mal' : 'como_vai_bem';
+  if (!key) return null;
+  const set = FEEL_LINES[key];
+  const lines = set[tone === 'debochado' ? 'debochado' : 'imponente'];
+  return { text: pick(`feel.${key}`, lines).replaceAll('{d}', driver || 'amigo'), emotion: set.emotion };
+}
+
 // tempo mínimo (s) entre repetições da mesma fala
 const CD = { start: 0, stop: 0, cold: 120, warm: 600, hot: 60, lowbatt: 120, highrpm: 45, speeding: 90, lowfuel: 300, brake: 45, idle: 300, long: 3600 };
 
@@ -116,7 +180,8 @@ export class SoulEvents {
   /**
    * @param {{engine:any, getVehicle:()=>any, getSetting:(p:string,d?:any)=>any, say:(text:string)=>void, onAwake:(on:boolean)=>void}} deps
    */
-  constructor({ engine, getVehicle, getSetting, say, onAwake }) {
+  constructor({ engine, getVehicle, getSetting, say, onAwake, onEmotion = null }) {
+    this.onEmotion = onEmotion;
     this.engine = engine;
     this.getVehicle = getVehicle;
     this.getSetting = getSetting;
@@ -164,6 +229,7 @@ export class SoulEvents {
     const T = liveValues(this.engine);
     const text = fmtLine(pick(key, LINES[key][tone]), { name: this.getSetting('assistant.name', 'Bolt'), driver: this.getSetting('driver.name', '') || 'amigo', T });
     this.say(text);
+    if (EVENT_EMOTION[key]) this.onEmotion?.(EVENT_EMOTION[key]);
   }
 
   step(dt) {

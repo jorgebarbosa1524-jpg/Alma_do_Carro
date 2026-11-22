@@ -19,7 +19,8 @@ import { VoiceService } from './voice.js';
 import { Assistant } from './assistant.js';
 import { NAV_ITEMS } from './icons.js';
 import { h, ic, iconButton, badge, modal, toast, clear } from './ui.js';
-import { createMascot } from './mascot.js';
+import { createMascot, setMascotAvatar, setMascotEmotion } from './mascot.js';
+import { carFaceFor } from './vehicle-catalog.js';
 import { mountDashboard } from './view-dashboard.js';
 import { mountGarage } from './view-garage.js';
 import { mountTrips } from './view-trips.js';
@@ -60,6 +61,15 @@ async function boot() {
   const garage = new Garage({ db });
   await garage.load();
   await seedGarage(db, garage, settings, profile);
+  // Rosto do assistente: "carro falante" (foto do carro) ou robozinho.
+  const syncAvatar = () => {
+    const v = garage.active();
+    const cf = v ? carFaceFor(v) : null;
+    setMascotAvatar({ style: settings.get('assistant.avatar', 'carro') || 'carro', file: cf?.file || null, face: cf?.face || null });
+  };
+  syncAvatar();
+  garage.on('change', syncAvatar);
+  settings.on('change', (p) => { if (String(p || '').startsWith('assistant.avatar') || p === 'assistant') syncAvatar(); });
   const geo = GeoTracker.isSupported(window) ? new GeoTracker(window) : null;
   const getSetting = (p, d) => settings.get(p, d);
   const getVehicle = () => garage.active();
@@ -261,7 +271,8 @@ async function boot() {
   assistant.on('state', (s) => mascot.setState(s));
 
   /* ---------- a alma: reage sozinha ao que acontece com o carro ---------- */
-  const soul = new SoulEvents({ engine, getVehicle, getSetting, say: (t) => assistant.say(t), onAwake: (on) => assistant.setAwake(on) });
+  const soul = new SoulEvents({ engine, getVehicle, getSetting, say: (t) => assistant.say(t), onAwake: (on) => assistant.setAwake(on), onEmotion: (e) => assistant.feel(e) });
+  assistant.on('emotion', setMascotEmotion);
   ctx.soul = soul;
   soul.start();
 

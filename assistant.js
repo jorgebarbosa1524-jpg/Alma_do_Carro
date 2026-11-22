@@ -6,7 +6,7 @@ import { Emitter } from './events.js';
 import { uid } from './utils.js';
 import { answerLocally } from './assistant-local.js';
 import { buildAiContext } from './ai-service.js';
-import { isSoulTone, soulReply, soulFallback, buildSoulPrompt, cleanReply, telemetryText, liveValues, getBrain, resetBrain } from './alma-soul.js';
+import { isSoulTone, soulReply, soulFallback, buildSoulPrompt, cleanReply, telemetryText, liveValues, getBrain, resetBrain, feelReply } from './alma-soul.js';
 
 export const PERSONALITIES = {
   imponente: { label: 'Imponente', hint: 'Grave, solene e leal, como a alma de um robô gigante.' },
@@ -52,6 +52,7 @@ export class Assistant extends Emitter {
     this.messages = [];
     this.transient = null; // listening | thinking | speaking
     this.mood = 'normal'; // normal | attention | alert
+    this.emotion = 'neutro'; // neutro | alegre | triste | bravo (aparece no rosto)
     this.busy = false;
     this.awake = false; // motor ligado e com dados: a alma desperta
     this.brainOff = false;
@@ -87,6 +88,14 @@ export class Assistant extends Emitter {
     if (this.tone === 'imponente') return d ? `Presente, ${d}. Pode falar.` : 'Presente. Pode falar.';
     if (this.tone === 'debochado') return d ? `Opa, ${d}! Pode falar.` : 'Opa! Pode falar.';
     return d ? `Oi, ${d}. Pode falar.` : 'Oi, pode falar.';
+  }
+
+  /** Sentimento passageiro do carro (rosto do assistente). Volta ao neutro sozinho. */
+  feel(emotion, ms = 9000) {
+    const e = ['alegre', 'triste', 'bravo'].includes(emotion) ? emotion : 'neutro';
+    clearTimeout(this._feelT);
+    if (this.emotion !== e) { this.emotion = e; this.emit('emotion', e); }
+    if (e !== 'neutro') this._feelT = setTimeout(() => { this.emotion = 'neutro'; this.emit('emotion', 'neutro'); }, ms);
   }
 
   get state() {
@@ -191,6 +200,16 @@ export class Assistant extends Emitter {
       this.emit('command', { name: cmd });
       if (cmd === 'standby') this.#speak(text);
       return { text, local: true };
+    }
+    // Elogio, xingamento, "tô triste", "como você está?": responde com sentimento, na hora.
+    const feelCtx = this.getContext();
+    const fr = feelReply(q, { tone: this.tone, driver: this.driver, hasAlerts: (feelCtx.alerts || []).length > 0 });
+    if (fr) {
+      this.#push('assistant', fr.text, { local: true, soul: true });
+      await this.#persist();
+      this.feel(fr.emotion, 12000);
+      this.#speak(fr.text);
+      return { text: fr.text, local: true };
     }
     this.busy = true;
     this.#setTransient('thinking');

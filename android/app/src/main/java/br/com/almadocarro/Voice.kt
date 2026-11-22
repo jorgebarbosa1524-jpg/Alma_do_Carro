@@ -315,6 +315,8 @@ class NativeStt(private val ctx: Context) {
         null
     }
 
+    private fun musicPlaying(): Boolean = try { audio.isMusicActive } catch (_: Throwable) { false }
+
     private fun safeOnDeviceAvailable(): Boolean = try {
         Build.VERSION.SDK_INT >= 33 && SpeechRecognizer.isOnDeviceRecognitionAvailable(ctx)
     } catch (_: Throwable) {
@@ -347,7 +349,17 @@ class NativeStt(private val ctx: Context) {
         Alma.js("window.__almaNative&&__almaNative.stt(${q(id)},${q(type)},${q(a)},$final,$altsJson)")
     }
 
-    fun start(id: String, lang: String, partial: Boolean, wake: String = "Bolt") {
+    private val audio = ctx.getSystemService(AudioManager::class.java)
+
+    fun start(id: String, lang: String, partial: Boolean, wake: String = "Bolt", continuous: Boolean = false) {
+        // O reconhecimento do Google pausa a música toda vez que começa a ouvir. Na escuta contínua
+        // (que reinicia a cada poucos segundos) isso deixava o Spotify "pausa-toca". Com música
+        // tocando e sem conversa em andamento, a escuta pelo nome espera a música parar; para falar
+        // com a música tocando, toque no botão do Bolt (isso abre uma conversa e libera a escuta).
+        if (continuous && !Alma.focus.active && !Alma.tts.speakingNow && musicPlaying()) {
+            Alma.main.postDelayed({ ev(id, "end") }, 3000)
+            return
+        }
         if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ev(id, "error", "not-allowed"); ev(id, "end"); return
         }

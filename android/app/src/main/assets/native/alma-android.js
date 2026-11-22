@@ -131,6 +131,12 @@
     if (heard && Date.now() - lastWakeSignal > 4000) { lastWakeSignal = Date.now(); A.wakeHeard(); N.diag('ouvi o nome "' + wakeName() + '"'); }
   }
 
+  // Depois de "Bolt" (ou do botão), o painel fica esperando a pergunta: aí a escuta precisa rodar
+  // mesmo com música tocando.
+  function armedNow() {
+    try { return !!(window.__alma && window.__alma.voice && Date.now() < window.__alma.voice.armedUntil); } catch (e) { return false; }
+  }
+
   function SpeechRecognition() {
     this.lang = 'pt-BR'; this.interimResults = false; this.continuous = false; this.maxAlternatives = 1; this.grammars = null;
     this.onstart = this.onend = this.onresult = this.onerror = this.onnomatch = this.onaudiostart = this.onaudioend = this.onspeechstart = this.onspeechend = this.onsoundstart = this.onsoundend = null;
@@ -149,7 +155,7 @@
     var id = 'r' + ++rseq;
     this._id = id;
     recs[id] = this;
-    A.sttStart(id, String(this.lang || 'pt-BR'), !!(this.interimResults || this.continuous), String(wakeName()));
+    A.sttStart(id, String(this.lang || 'pt-BR'), !!(this.interimResults || this.continuous), String(wakeName()), !!this.continuous && !armedNow());
   };
   SpeechRecognition.prototype.stop = function () {
     if (!this._run) return;

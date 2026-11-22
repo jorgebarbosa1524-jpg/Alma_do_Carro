@@ -65,6 +65,10 @@
 html.standby-on, html.standby-on body { overflow: hidden; }
 @media (max-aspect-ratio: 1/1) { .sb-mascot { --ms: min(86vw, 60vh) !important; } .sb-caption { bottom: calc(env(safe-area-inset-bottom) + 120px); } }
 @media (max-height: 420px) { .sb-mascot { --ms: min(60vw, 62vh) !important; } .sb-caption { bottom: calc(env(safe-area-inset-bottom) + 82px); } .sb-text { font-size: 1.15rem; } .sb-hint { display: none; } }
+/* carro falante: a foto é larga (3:2), então ocupa quase a tela toda */
+.sb-mascot.is-car { --ms: min(63vw, 90vh) !important; }
+@media (max-aspect-ratio: 1/1) { .sb-mascot.is-car { --ms: min(64vw, 56vh) !important; } }
+@media (max-height: 420px) { .sb-mascot.is-car { --ms: min(62vw, 86vh) !important; } }
 @media (prefers-reduced-motion: reduce) { .sb-halo, .sb-hint svg, .sb-alert, .standby.is-on .sb-mascot svg, .sb-mascot[data-state="sleeping"] .m-eye { animation: none !important; } .standby, .sb-caption, .sb-face { transition: none; } }
 
 /* acabamento dos olhos: degradê, brilho de borda e reflexo */

@@ -229,6 +229,7 @@
   .ck-asst { position: absolute; z-index: 5; top: 6px; right: calc(var(--gs) + 18px); left: auto; grid-template-columns: auto; width: auto; pointer-events: none; }
   .ck-asst > * { pointer-events: auto; }
   .ck-asst .bolt-mascot { --ms: 58px !important; }
+  .ck-asst .bolt-mascot.is-car { --ms: 84px !important; }
   .ck-bubble, .ck-asstsw { display: none; }
   .ck-info { grid-template-columns: 1.4fr 1fr 1fr 0.9fr; }
   .ck-vehicle { display: none; }
@@ -264,6 +265,7 @@
   .ck-speed, .ck-rpm { width: 100%; height: auto; aspect-ratio: 1; }
   .ck-asst { grid-area: asst; grid-template-columns: auto 1fr; justify-items: stretch; align-items: center; gap: 12px; }
   .ck-asst .bolt-mascot { --ms: 72px !important; }
+  .ck-asst .bolt-mascot.is-car { --ms: 110px !important; }
   .ck-asstsw { display: none; }
   .ck-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .ck-tile { grid-template-columns: 1fr; grid-template-areas: "body" "bar"; padding: 10px; } .ck-tile .ck-ico { display: none; } .ck-tile[data-param="consumption"] { grid-template-areas: "body"; }

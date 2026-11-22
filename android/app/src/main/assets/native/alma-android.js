@@ -316,6 +316,15 @@
     } catch (e) { /* ignora */ }
   }
   N.permissionsChanged = function () { if (app) setTimeout(maybeListen, 500); };
+  // Ligou o microfone ou a escuta contínua em qualquer tela: começa a ouvir na hora.
+  function watchMicSettings(a) {
+    try {
+      a.settings.on('change', function (path) {
+        var p = String(path || '');
+        if (p.indexOf('assistant.micEnabled') === 0 || p.indexOf('assistant.listenMode') === 0 || p === 'assistant') setTimeout(maybeListen, 300);
+      });
+    } catch (e) { /* ignora */ }
+  }
 
   var waitT = setInterval(function () {
     var a = window.__alma;
@@ -324,6 +333,7 @@
     app = a;
     // No navegador a escuta pelo nome só começa depois de um toque; no app ela já começa sozinha.
     setTimeout(maybeListen, 1200);
+    watchMicSettings(a);
     var msgs = a.assistant.messages || [];
     var lastId = msgs.length ? msgs[msgs.length - 1].id : null;
     a.assistant.on('messages', function (list) {

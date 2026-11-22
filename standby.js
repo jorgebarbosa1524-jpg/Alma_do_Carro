@@ -223,20 +223,26 @@ export class StandbyMode extends Emitter {
     this.micBtn.dataset.live = live ? '1' : '0';
     this.micBtn.disabled = !sup;
     this.micBtn.setAttribute('aria-pressed', String(on));
-    const label = !sup ? 'Voz indisponível neste navegador' : on ? `Escutando: diga “${this.assistant.name}”. Toque para desligar o microfone` : 'Microfone desligado. Toque para ligar';
+    const label = !sup ? 'Voz indisponível neste navegador' : on ? `Escutando: diga “${this.assistant.name}” ou toque aqui para falar` : 'Microfone desligado. Toque para ligar e falar';
     this.micBtn.setAttribute('aria-label', label);
     this.micBtn.title = label;
     this.micBtn.replaceChildren(ic(on ? 'mic' : 'mic-off', 18));
   }
 
+  /**
+   * Toque no microfone = "pode falar": chama o assistente sem precisar dizer o nome.
+   * (Antes o toque DESLIGAVA o microfone, e o assistente parava de ouvir. Desligar fica nas Configurações.)
+   */
   #toggleMic() {
     if (!this.voice.sttSupported) return;
-    if (this.#micOn()) {
-      this.settings.set('assistant.micEnabled', false);
-      this.voice.stopListening();
-    } else {
+    if (!this.#micOn()) {
       if (this.settings.get('assistant.listenMode', 'tap') !== 'continuous') this.settings.set('assistant.listenMode', 'continuous');
       this.settings.set('assistant.micEnabled', true);
+    }
+    if (this.voice.listening && this.voice.continuous) this.voice.emit('wake', { command: '', transcript: '' });
+    else {
+      this.voice.startListening({ mode: 'continuous' });
+      this.#later(() => { if (this.voice.listening) this.voice.emit('wake', { command: '', transcript: '' }); }, 700);
     }
     this.#paintMic();
   }

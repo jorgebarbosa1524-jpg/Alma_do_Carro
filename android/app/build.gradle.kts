@@ -24,8 +24,8 @@ android {
         applicationId = "br.com.almadocarro"
         minSdk = 26
         targetSdk = 35
-        versionCode = 21
-        versionName = "1.6.1"
+        versionCode = 22
+        versionName = "1.7.0"
     }
 
     signingConfigs {
@@ -43,6 +43,11 @@ android {
         create("renegade") {
             dimension = "carro"
             resValue("string", "app_name", "Alma do Carro")
+        }
+        create("civic") {
+            dimension = "carro"
+            applicationIdSuffix = ".civic"
+            resValue("string", "app_name", "Alma do Civic")
         }
         create("ecosport") {
             dimension = "carro"

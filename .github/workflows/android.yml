@@ -33,6 +33,7 @@ jobs:
         run: |
           cp android/app/build/outputs/apk/renegade/release/app-renegade-release.apk AlmaDoCarro.apk
           cp android/app/build/outputs/apk/ecosport/release/app-ecosport-release.apk AlmaDaEcoSport.apk
+          cp android/app/build/outputs/apk/civic/release/app-civic-release.apk AlmaDoCivic.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -40,11 +41,12 @@ jobs:
           path: |
             AlmaDoCarro.apk
             AlmaDaEcoSport.apk
+            AlmaDoCivic.apk
 
       - name: Publicar link de download
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete apk-estavel --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
-          gh release create apk-estavel AlmaDoCarro.apk AlmaDaEcoSport.apk -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "Alma do Carro - versão estável" --notes "AlmaDoCarro.apk = Jeep Renegade (Jorge). AlmaDaEcoSport.apk = EcoSport 2006 (Jean)." --latest=false
+          gh release create apk-estavel AlmaDoCarro.apk AlmaDaEcoSport.apk AlmaDoCivic.apk -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Alma do Carro - versão estável" --notes "AlmaDoCarro.apk = Jeep Renegade (Jorge). AlmaDaEcoSport.apk = EcoSport 2006 (Jean). AlmaDoCivic.apk = Civic G8 2010 (Gabriel)." --latest=false

@@ -26,11 +26,7 @@ export const BOLT_VEHICLE_IMAGES = {
   civic2010: {
     name: 'Honda Civic 2010',
     colors: {
-      prata: 'civic2010_prata.png',
-      branco: 'civic2010_branco.png',
-      preto: 'civic2010_preto.png',
-      vermelho: 'civic2010_vermelho.png',
-      azul: 'civic2010_azul.png',
+      prata: 'civic2010_champanhe.webp',
     },
   },
   ecosport2006: {
@@ -148,6 +144,13 @@ export const BOLT_CAR_FACES = {
       { x: 91.5, y: 48.1, w: 3.2, h: 9.0 },
     ],
     mouth: { x: 81.9, y: 70.6, w: 17.5, h: 7.2 },
+  },
+  civic2010: {
+    eyes: [
+      { x: 68.5, y: 53.5, w: 4.8, h: 6.0 },
+      { x: 93.2, y: 52.5, w: 2.6, h: 5.6 },
+    ],
+    mouth: { x: 83.8, y: 67.8, w: 17.5, h: 6.9 },
   },
   ecosport2006: {
     eyes: [

@@ -503,7 +503,9 @@ class BeepMuter(ctx: Context) {
         if (end > until) until = end
         if (muted.isEmpty()) {
             val streams = arrayListOf(AudioManager.STREAM_SYSTEM, AudioManager.STREAM_NOTIFICATION)
-            if (!am.isMusicActive) streams += AudioManager.STREAM_MUSIC
+            // No carro (Android Auto) a mídia nunca é silenciada: o Spotify pode estar só pausado
+            // por um instante e voltaria cortado.
+            if (!am.isMusicActive && !Alma.carConnected) streams += AudioManager.STREAM_MUSIC
             for (st in streams) {
                 try {
                     if (!am.isStreamMute(st)) {

@@ -199,7 +199,6 @@
         }
       }
       N.diag((isFinal ? 'entendi: "' : 'ouvindo: "') + a + '"');
-      checkWake(a);
       r._emitResult(a, isFinal);
       return;
     }
@@ -343,6 +342,10 @@
       if (m.role === 'assistant' && m.text) A.assistantMessage(String(m.text));
     });
     try {
+      // Só uma chamada confirmada pelo painel pausa a música (antes, qualquer texto provisório pausava).
+      a.voice.on('wake', function () {
+        if (Date.now() - lastWakeSignal > 4000) { lastWakeSignal = Date.now(); A.wakeHeard(); }
+      });
       a.voice.on('wake', function (w) { N.diag('nome reconhecido; pedido: "' + ((w && w.command) || '') + '"'); });
       a.voice.on('result', function (r) { if (r && r.final) N.diag('painel recebeu: "' + (r.text || '') + '"'); });
       a.voice.on('error', function (e) { N.diag('painel: erro de voz ' + JSON.stringify(e || '')); });

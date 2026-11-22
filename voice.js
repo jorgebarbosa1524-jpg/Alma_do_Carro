@@ -16,7 +16,8 @@ const norm = (s) =>
 
 /** Extrai o comando após a palavra de ativação (ex.: "ei bolt, qual a temperatura"). */
 // o reconhecimento de voz erra o nome de formas previsíveis; estas variações também ativam a alma
-const WAKE_ALIASES = { bolt: ['bolte', 'volt', 'bolti', 'boult', 'boldi', 'bout', 'bote', 'boti', 'bolts', 'volte', 'boot', 'bold'] };
+// Sem palavras comuns ("bote", "volte", "bold", "boot"): com música tocando elas disparavam chamadas falsas.
+const WAKE_ALIASES = { bolt: ['bolte', 'volt', 'bolti', 'boult', 'boldi', 'boti', 'bolts'] };
 
 export function extractAfterWake(transcript, wakeName) {
   const t = ` ${norm(transcript)} `;

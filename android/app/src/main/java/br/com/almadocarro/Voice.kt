@@ -269,7 +269,10 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
         Alma.beep.ensureMediaAudible()
         pickVoice(voiceName, lang)?.let { try { tts.setVoice(it) } catch (_: Throwable) { } }
         tts.setSpeechRate(rate.coerceIn(0.1f, 3f))
-        tts.setPitch(pitch.coerceIn(0.1f, 2f))
+        // O painel usa tom 0.05–1.6 (padrão 0.15), pensado para o Chrome, onde as vozes do Google
+        // quase ignoram o tom. No Android o tom é aplicado de verdade e deformava a voz (rouca ou
+        // fininha). Aqui vira uma faixa suave: 0.05 → 0.90, 0.15 → 0.91, 1.0 → 1.0, 1.6 → 1.06.
+        tts.setPitch((0.9f + 0.1f * pitch.coerceIn(0f, 1.6f)).coerceIn(0.85f, 1.1f))
         val params = Bundle().apply { putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, volume.coerceIn(0f, 1f)) }
         Alma.focus.acquire(FocusManager.SPEAK)
         currentId = id

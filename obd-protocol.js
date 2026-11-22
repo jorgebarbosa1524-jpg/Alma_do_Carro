@@ -379,6 +379,15 @@ export class Elm327Session extends Emitter {
     return dec;
   }
 
+  /** Lê um PID do modo 01 e devolve os bytes de dados crus (para leituras da checagem por voz). */
+  async readRaw(pidHex) {
+    const pid = pidHex.toUpperCase();
+    const lines = await this.request(`01${pid}`, { timeout: 2500 });
+    const data = this.#extract(lines, 0x41, pid);
+    if (!data) throw new ObdError('NO_DATA', `Sem resposta para o PID ${pid}`);
+    return data;
+  }
+
   async #readDtcMode(mode, respMode) {
     try {
       const lines = await this.request(mode, { timeout: 6000 });

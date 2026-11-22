@@ -20,6 +20,7 @@ import { Assistant } from './assistant.js';
 import { NAV_ITEMS } from './icons.js';
 import { h, ic, iconButton, badge, modal, toast, clear } from './ui.js';
 import { createMascot, setMascotAvatar, setMascotEmotion } from './mascot.js';
+import { runCheck } from './voice-checkup.js';
 import { carFaceFor } from './vehicle-catalog.js';
 import { mountDashboard } from './view-dashboard.js';
 import { mountGarage } from './view-garage.js';
@@ -273,6 +274,12 @@ async function boot() {
   /* ---------- a alma: reage sozinha ao que acontece com o carro ---------- */
   const soul = new SoulEvents({ engine, getVehicle, getSetting, say: (t) => assistant.say(t), onAwake: (on) => assistant.setAwake(on), onEmotion: (e) => assistant.feel(e) });
   assistant.on('emotion', setMascotEmotion);
+  // Checagens por voz pelo OBD2 (voice-checkup.js).
+  assistant.checkup = (id, { tone, driver }) => runCheck(id, {
+    ds, obd, diag, engine, getVehicle, tone, driver,
+    alerts: alerts.list(),
+    maintenance: maintItems.map((m) => ({ name: m.name, status: m.status, detail: m.detail })),
+  });
   ctx.soul = soul;
   soul.start();
 

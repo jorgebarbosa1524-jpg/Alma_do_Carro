@@ -346,6 +346,14 @@ export class ObdManager extends Emitter {
   readMonitorStatus() {
     return this.#diag((s) => s.readMonitorStatus());
   }
+  /** PIDs que a central do carro diz suportar (lista em hex). */
+  get supportedPids() {
+    return this.info.supportedPids || [];
+  }
+  /** Bytes crus de um PID do modo 01 (checagem por voz: ajuste de combustível, sonda etc.). */
+  readRaw(pid) {
+    return this.#diag((s) => s.readRaw(pid));
+  }
   readFreezeFrame() {
     return this.#diag((s) => s.readFreezeFrame());
   }

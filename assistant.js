@@ -6,6 +6,7 @@ import { Emitter } from './events.js';
 import { uid } from './utils.js';
 import { answerLocally } from './assistant-local.js';
 import { buildAiContext } from './ai-service.js';
+import { matchCheck } from './voice-checkup.js';
 import { isSoulTone, soulReply, soulFallback, buildSoulPrompt, cleanReply, telemetryText, liveValues, getBrain, resetBrain, feelReply } from './alma-soul.js';
 
 export const PERSONALITIES = {
@@ -200,6 +201,27 @@ export class Assistant extends Emitter {
       this.emit('command', { name: cmd });
       if (cmd === 'standby') this.#speak(text);
       return { text, local: true };
+    }
+    // Checagens pelo OBD2 ("faz uma checagem", "tem alguma falha?", "checa a bateria"...).
+    const ck = this.checkup ? matchCheck(q) : null;
+    if (ck) {
+      this.busy = true;
+      this.#setTransient('thinking');
+      if (!['menu', 'apagar', 'adaptador'].includes(ck)) this.#speak(this.tone === 'debochado' ? 'Deixa comigo, vou dar uma olhada.' : 'Iniciando a verificação. Um momento.');
+      let r;
+      try {
+        r = await this.checkup(ck, { tone: this.tone, driver: this.driver });
+      } catch (e) {
+        r = { spoken: `Não consegui terminar a verificação: ${e?.message || 'erro desconhecido'}.`, report: null, emotion: 'triste' };
+      } finally {
+        this.busy = false;
+      }
+      this.#push('assistant', r.report || r.spoken, { local: true, soul: true });
+      this.#setTransient(null);
+      await this.#persist();
+      if (r.emotion) this.feel(r.emotion, 14000);
+      this.#speak(r.spoken);
+      return { text: r.report || r.spoken, local: true };
     }
     // Elogio, xingamento, "tô triste", "como você está?": responde com sentimento, na hora.
     const feelCtx = this.getContext();

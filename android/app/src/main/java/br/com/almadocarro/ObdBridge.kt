@@ -340,8 +340,14 @@ class ObdBridge(private val ctx: Context) {
                     var s: BluetoothSocket? = null
                     try {
                         s = make()
-                        s.connect()
-                        return s
+                        // Em algumas centrais o connect() fica preso para sempre: fecha após 12 s.
+                        val sock = s
+                        val dog = Thread {
+                            try { Thread.sleep(12000); try { sock.close() } catch (_: Throwable) { } } catch (_: InterruptedException) { }
+                        }.apply { isDaemon = true; start() }
+                        try { sock.connect() } finally { dog.interrupt() }
+                        if (!sock.isConnected) throw IllegalStateException("tempo esgotado")
+                        return sock
                     } catch (e: Throwable) {
                         last = e
                         try { s?.close() } catch (_: Throwable) { }

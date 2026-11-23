@@ -14,7 +14,10 @@ import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothSocket
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -84,7 +87,16 @@ class ObdBridge(private val ctx: Context) {
                 adapter!!.bondedDevices.orEmpty()
                     .filter { it.type != BluetoothDevice.DEVICE_TYPE_LE }
                     .forEach { items.add((it.name ?: it.address) to it.address) }
-                if (items.isEmpty()) throw IllegalStateException("Nenhum adaptador pareado. Pareie o ELM327 nas configurações de Bluetooth do celular (PIN costuma ser 1234 ou 0000).")
+                // Nenhum OBD pareado (ex.: central multimídia cujo Bluetooth só pareia celular):
+                // o próprio Bolt procura o adaptador por perto e pareia sozinho (PIN 1234).
+                if (items.none { OBD_NAME.containsMatchIn(it.first) } &&
+                    (Build.VERSION.SDK_INT < 31 || has(Manifest.permission.BLUETOOTH_SCAN))) {
+                    val bonded = items.map { it.second }.toSet()
+                    discoverClassic(12000).filter { it.second !in bonded }.forEach {
+                        items.add("${it.first} (novo, parear)" to it.second)
+                    }
+                }
+                if (items.isEmpty()) throw IllegalStateException("Nenhum adaptador encontrado. Ligue o carro, tire e recoloque o OBD2 e desligue o Bluetooth do celular, para ele não ocupar o adaptador.")
             }
             "wifi" -> items.add(wifiItem())
             else -> { // "ble" / "native"
@@ -151,6 +163,88 @@ class ObdBridge(private val ctx: Context) {
         return synchronized(found) { found.map { (addr, name) -> name to addr } }
     }
 
+    /** Busca Bluetooth clássico (aparelhos não pareados), só os que têm nome. */
+    private fun discoverClassic(ms: Long): List<Pair<String, String>> {
+        val a = adapter ?: return emptyList()
+        val found = LinkedHashMap<String, String>()
+        val done = CountDownLatch(1)
+        val rx = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) {
+                when (i.action) {
+                    BluetoothDevice.ACTION_FOUND -> {
+                        val d: BluetoothDevice? = if (Build.VERSION.SDK_INT >= 33)
+                            i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                        else @Suppress("DEPRECATION") i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                        val name = i.getStringExtra(BluetoothDevice.EXTRA_NAME) ?: d?.name
+                        if (d != null && !name.isNullOrBlank() && d.type != BluetoothDevice.DEVICE_TYPE_LE) {
+                            synchronized(found) { found[d.address] = name }
+                            // Achou um com cara de OBD: não precisa esperar o resto.
+                            if (OBD_NAME.containsMatchIn(name)) done.countDown()
+                        }
+                    }
+                    BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> done.countDown()
+                }
+            }
+        }
+        val f = IntentFilter().apply {
+            addAction(BluetoothDevice.ACTION_FOUND)
+            addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
+        }
+        try {
+            ContextCompat.registerReceiver(ctx, rx, f, ContextCompat.RECEIVER_EXPORTED)
+            try { a.cancelDiscovery() } catch (_: Throwable) { }
+            if (a.startDiscovery()) done.await(ms, TimeUnit.MILLISECONDS)
+        } catch (e: Throwable) {
+            Log.w(Alma.TAG, "Busca Bluetooth clássico falhou", e)
+        } finally {
+            try { a.cancelDiscovery() } catch (_: Throwable) { }
+            try { ctx.unregisterReceiver(rx) } catch (_: Throwable) { }
+        }
+        return synchronized(found) { found.map { (addr, name) -> name to addr } }
+    }
+
+    /** Pareia com o adaptador, já entregando o PIN (1234, depois 0000). */
+    private fun ensureBonded(dev: BluetoothDevice) {
+        if (dev.bondState == BluetoothDevice.BOND_BONDED) return
+        val done = CountDownLatch(1)
+        var pinIdx = 0
+        val pins = listOf("1234", "0000")
+        val rx = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) {
+                val d: BluetoothDevice? = if (Build.VERSION.SDK_INT >= 33)
+                    i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                else @Suppress("DEPRECATION") i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                if (d?.address != dev.address) return
+                when (i.action) {
+                    BluetoothDevice.ACTION_PAIRING_REQUEST -> {
+                        try {
+                            d.setPin(pins[pinIdx.coerceAtMost(pins.size - 1)].toByteArray())
+                            pinIdx++
+                        } catch (_: Throwable) { }
+                    }
+                    BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
+                        val st = i.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1)
+                        if (st == BluetoothDevice.BOND_BONDED || st == BluetoothDevice.BOND_NONE) done.countDown()
+                    }
+                }
+            }
+        }
+        val f = IntentFilter().apply {
+            addAction(BluetoothDevice.ACTION_PAIRING_REQUEST)
+            addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+            priority = IntentFilter.SYSTEM_HIGH_PRIORITY - 1
+        }
+        try {
+            ContextCompat.registerReceiver(ctx, rx, f, ContextCompat.RECEIVER_EXPORTED)
+            if (dev.createBond()) done.await(40, TimeUnit.SECONDS)
+        } catch (e: Throwable) {
+            Log.w(Alma.TAG, "Pareamento falhou", e)
+        } finally {
+            try { ctx.unregisterReceiver(rx) } catch (_: Throwable) { }
+        }
+        // Mesmo sem pareamento, segue: muitos ELM327 aceitam conexão "insegura" sem parear.
+    }
+
     /* ------------------------------------------------------------------ conexão */
 
     fun connect(mode: String, address: String) {
@@ -213,6 +307,7 @@ class ObdBridge(private val ctx: Context) {
             val a = adapter!!
             val dev = a.getRemoteDevice(address)
             try { a.cancelDiscovery() } catch (_: Throwable) { }
+            ensureBonded(dev)
             socket = openSocket(dev)
             out = socket.outputStream
             startReader(this, socket.inputStream, "Bluetooth")

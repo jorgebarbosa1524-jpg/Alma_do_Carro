@@ -85,7 +85,7 @@ class FocusManager(ctx: Context) {
         if (want == 0) return
         // Canal de mídia: no Android Auto o canal de "navegação" tem qualidade baixa (voz fina).
         // Canal de orientação (o mesmo do Waze): o Android Auto abaixa a música por cima, sem parar.
-        val usage = AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE
+        val usage = voiceUsage()
         val req = AudioFocusRequest.Builder(want)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -236,6 +236,8 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
 
     fun voicesJson(): String = voicesCache
 
+    private var lastUsage = AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE
+
     /** O Bolt está falando agora (nada pode ser silenciado). */
     val speakingNow: Boolean get() = currentId != null
 
@@ -269,6 +271,16 @@ class NativeTts(private val ctx: Context) : TextToSpeech.OnInitListener {
         }
         Alma.beep.unmuteNow()
         Alma.beep.ensureMediaAudible()
+        val usage = voiceUsage()
+        if (usage != lastUsage) {
+            lastUsage = usage
+            try {
+                tts.setAudioAttributes(
+                    AudioAttributes.Builder().setUsage(usage)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()
+                )
+            } catch (_: Throwable) { }
+        }
         pickVoice(voiceName, lang)?.let { try { tts.setVoice(it) } catch (_: Throwable) { } }
         tts.setSpeechRate(rate.coerceIn(0.1f, 3f))
         // O painel usa tom 0.05–1.6 (padrão 0.15), pensado para o Chrome, onde as vozes do Google
@@ -551,3 +563,13 @@ class BeepMuter(ctx: Context) {
         prefs.edit().remove("muted").commit()
     }
 }
+
+
+/**
+ * Canal da voz do Bolt. No Android Auto: canal de orientação (como o Waze), que só abaixa a música.
+ * Fora dele (celular sozinho ou instalado direto na central multimídia): canal de mídia, porque
+ * muitas centrais chinesas só tocam "orientação" para o app escolhido como GPS e o Bolt ficava mudo.
+ */
+fun voiceUsage(): Int =
+    if (Alma.carConnected) AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE
+    else AudioAttributes.USAGE_MEDIA

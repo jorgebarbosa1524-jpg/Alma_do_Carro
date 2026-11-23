@@ -77,6 +77,18 @@ class ObdBridge(private val ctx: Context) {
         if (!a.isEnabled) throw IllegalStateException("Ligue o Bluetooth do celular.")
     }
 
+    /** Procurar aparelhos por perto exige a permissão "Dispositivos por perto" (e localização no Android antigo). */
+    private fun needScanPermission() {
+        val missing = if (Build.VERSION.SDK_INT >= 31)
+            listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT).filter { !has(it) }
+        else listOf(Manifest.permission.ACCESS_FINE_LOCATION).filter { !has(it) }
+        if (missing.isEmpty()) return
+        Alma.activity?.let { act ->
+            Alma.main.post { try { androidx.core.app.ActivityCompat.requestPermissions(act, missing.toTypedArray(), 77) } catch (_: Throwable) { } }
+        }
+        throw IllegalStateException("O Alma do Carro precisa da permissão 'Dispositivos por perto' para achar o OBD2. Toque em Permitir e conecte de novo.")
+    }
+
     /* ------------------------------------------------------------------ lista */
 
     fun list(mode: String): JSONArray {
@@ -89,8 +101,8 @@ class ObdBridge(private val ctx: Context) {
                     .forEach { items.add((it.name ?: it.address) to it.address) }
                 // Nenhum OBD pareado (ex.: central multimídia cujo Bluetooth só pareia celular):
                 // o próprio Bolt procura o adaptador por perto e pareia sozinho (PIN 1234).
-                if (items.none { OBD_NAME.containsMatchIn(it.first) } &&
-                    (Build.VERSION.SDK_INT < 31 || has(Manifest.permission.BLUETOOTH_SCAN))) {
+                if (items.none { OBD_NAME.containsMatchIn(it.first) }) {
+                    needScanPermission()
                     val bonded = items.map { it.second }.toSet()
                     discoverClassic(12000).filter { it.second !in bonded }.forEach {
                         items.add("${it.first} (novo, parear)" to it.second)
@@ -100,9 +112,10 @@ class ObdBridge(private val ctx: Context) {
             }
             "wifi" -> items.add(wifiItem())
             else -> { // "ble" / "native"
-                if (adapter?.isEnabled == true && (Build.VERSION.SDK_INT < 31 || has(Manifest.permission.BLUETOOTH_SCAN))) {
-                    scanBle(4500).forEach { items.add(it) }
-                }
+                needBtPermissions()
+                needScanPermission()
+                scanBle(6000).forEach { items.add(it) }
+                if (items.isEmpty()) throw IllegalStateException("Nenhum adaptador Bluetooth encontrado por perto. Ligue o carro, tire e recoloque o OBD2 e tente de novo.")
                 items.add(wifiItem())
             }
         }
